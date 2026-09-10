@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Salt Bubble</string>
+    <string name="notification_channel_name">Salt Bubble overlay</string>
+    <string name="notification_channel_desc">Keeps the floating messenger alive while you use other apps.</string>
+    <string name="notification_title">Salt Bubble is live</string>
+    <string name="notification_text">Overlay is over your apps. Hold the bubble to talk.</string>
+    <string name="notification_stop">Stop</string>
+    <string name="notification_open">Open</string>
+    <string name="paste_in_grok">Paste in Grok Bot</string>
+</resources>
