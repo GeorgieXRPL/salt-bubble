@@ -1,0 +1,262 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A100000000000001 /* SaltBubbleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000001 /* SaltBubbleApp.swift */; };
+		A100000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000002 /* ContentView.swift */; };
+		A100000000000003 /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000003 /* Pairing.swift */; };
+		A100000000000004 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000004 /* SettingsStore.swift */; };
+		A100000000000005 /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000005 /* Recorder.swift */; };
+		A100000000000006 /* Transcription.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000006 /* Transcription.swift */; };
+		A100000000000007 /* Send.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000007 /* Send.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B100000000000000 /* SaltBubble.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SaltBubble.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B100000000000001 /* SaltBubbleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaltBubbleApp.swift; sourceTree = "<group>"; };
+		B100000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B100000000000003 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
+		B100000000000004 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		B100000000000005 /* Recorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
+		B100000000000006 /* Transcription.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcription.swift; sourceTree = "<group>"; };
+		B100000000000007 /* Send.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Send.swift; sourceTree = "<group>"; };
+		B100000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C100000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D100000000000001 = {
+			isa = PBXGroup;
+			children = (
+				D100000000000002 /* SaltBubble */,
+				D100000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D100000000000002 /* SaltBubble */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000001 /* SaltBubbleApp.swift */,
+				B100000000000002 /* ContentView.swift */,
+				B100000000000003 /* Pairing.swift */,
+				B100000000000004 /* SettingsStore.swift */,
+				B100000000000005 /* Recorder.swift */,
+				B100000000000006 /* Transcription.swift */,
+				B100000000000007 /* Send.swift */,
+				B100000000000008 /* Info.plist */,
+			);
+			path = SaltBubble;
+			sourceTree = "<group>";
+		};
+		D100000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000 /* SaltBubble.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E100000000000001 /* SaltBubble */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F100000000000003 /* Build configuration list for PBXNativeTarget "SaltBubble" */;
+			buildPhases = (
+				E100000000000002 /* Sources */,
+				C100000000000001 /* Frameworks */,
+				E100000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SaltBubble;
+			productName = SaltBubble;
+			productReference = B100000000000000 /* SaltBubble.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E100000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					E100000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = F100000000000001 /* Build configuration list for PBXProject "SaltBubble" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D100000000000001;
+			productRefGroup = D100000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E100000000000001 /* SaltBubble */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E100000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E100000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000000000001 /* SaltBubbleApp.swift in Sources */,
+				A100000000000002 /* ContentView.swift in Sources */,
+				A100000000000003 /* Pairing.swift in Sources */,
+				A100000000000004 /* SettingsStore.swift in Sources */,
+				A100000000000005 /* Recorder.swift in Sources */,
+				A100000000000006 /* Transcription.swift in Sources */,
+				A100000000000007 /* Send.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		F200000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		F200000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F200000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SaltBubble/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Salt Bubble";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.easton.saltbubble.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		F200000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SaltBubble/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Salt Bubble";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.easton.saltbubble.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F100000000000001 /* Build configuration list for PBXProject "SaltBubble" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F200000000000001 /* Debug */,
+				F200000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F100000000000003 /* Build configuration list for PBXNativeTarget "SaltBubble" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F200000000000003 /* Debug */,
+				F200000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E100000000000000 /* Project object */;
+}

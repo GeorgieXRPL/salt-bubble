@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private var showSettings by mutableStateOf(false)
     private var permissionTick by mutableStateOf(0)
     private var bridgePing by mutableStateOf("")
+    private var pairStatus by mutableStateOf("")
 
     private val micLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyPairIntent(intent)
         setContent {
             val settings by settingsFlow.collectAsState()
             val tick = permissionTick
@@ -66,6 +68,7 @@ class MainActivity : ComponentActivity() {
                         permissions = currentPermissions(tick),
                         grokInstalled = GrokApps(packageManager).anyInstalled(settings.grokPackage),
                         bridgePing = bridgePing,
+                        pairStatus = pairStatus,
                         onLaunch = ::launchBubble,
                         onStop = { BubbleService.stop(this) },
                         onSettings = { showSettings = true },
@@ -85,9 +88,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        applyPairIntent(intent)
+    }
+
     override fun onResume() {
         super.onResume()
         permissionTick++
+    }
+
+    private fun applyPairIntent(intent: Intent?) {
+        val pair = com.easton.saltbubble.data.PairUrls.parse(intent?.data) ?: return
+        lifecycleScope.launch {
+            application.saltBubble.settingsStore.update { current ->
+                current.copy(
+                    hubUrl = pair.hubUrl,
+                    hubToken = pair.hubToken,
+                    captureUrl = pair.captureUrl.ifBlank { current.captureUrl },
+                    postIdeaOnSend = true,
+                )
+            }
+            pairStatus = "Paired with Brand Studio"
+        }
     }
 
     private fun currentPermissions(tick: Int): PermissionSnapshot {

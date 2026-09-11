@@ -120,6 +120,18 @@ If you paste an Agent API key (`ak_…`) in Settings and leave **POST idea to hu
 
 Default hub: `https://brand-studio-hub.fly.dev`. A blank token skips the POST. A failed POST does not undo Grok/Capture send; the overlay shows `Could not POST idea: …`.
 
+### Pair from Brand Studio
+
+Create an Agent key in Brand Studio → **Agents**. On the phone tap **Open Salt Bubble**. That opens:
+
+`saltbubble://pair?hub=…&key=ak_…&capture=…`
+
+or the landing page `https://app.mybrandstudio.club/salt-bubble/pair?…`. Salt Bubble stores the hub URL and key. The key can `POST /api/ideas` only — it cannot publish.
+
+## iOS companion
+
+iOS cannot float a bubble over Camera. Source lives in [`ios/`](ios/). Open `ios/SaltBubble.xcodeproj` on a Mac. Same bridge token, same pair URL, hold-to-talk in the app.
+
 ## What v1 does
 
 1. Floating cyan bubble over other apps (`SYSTEM_ALERT_WINDOW`).
@@ -206,4 +218,7 @@ salt-bubble/
     ui/overlay/OverlayRoot.kt
   app/src/test/java/com/easton/saltbubble/
     BridgeUrlsTest.kt
+  ios/                               # iOS companion (Xcode)
+    SaltBubble.xcodeproj
+    SaltBubble/
 ```

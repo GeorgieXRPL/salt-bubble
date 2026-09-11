@@ -65,6 +65,7 @@ fun HomeScreen(
     permissions: PermissionSnapshot,
     grokInstalled: Boolean,
     bridgePing: String,
+    pairStatus: String,
     onLaunch: () -> Unit,
     onStop: () -> Unit,
     onSettings: () -> Unit,
@@ -157,6 +158,20 @@ fun HomeScreen(
             Text(
                 "Capture → ${settings.captureUrl}",
                 color = InkMuted,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Text(
+                when {
+                    pairStatus.isNotBlank() -> pairStatus
+                    settings.hubToken.isNotBlank() -> "Brand Studio paired"
+                    else -> "Brand Studio not paired — Agents → Open Salt Bubble"
+                },
+                color = if (settings.hubToken.isBlank() && pairStatus.isBlank()) {
+                    InkMuted
+                } else {
+                    Cyan
+                },
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )

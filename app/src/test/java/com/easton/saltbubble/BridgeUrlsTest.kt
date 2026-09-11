@@ -5,6 +5,7 @@ import com.easton.saltbubble.data.BridgeUrls
 import com.easton.saltbubble.data.CaptureUrls
 import com.easton.saltbubble.data.Destination
 import com.easton.saltbubble.data.GrokTargets
+import com.easton.saltbubble.data.PairUrls
 import com.easton.saltbubble.net.HubUrls
 import com.easton.saltbubble.net.TranscriptParser
 import org.junit.Assert.assertEquals
@@ -210,6 +211,38 @@ class HubUrlsTest {
         assertEquals(
             """{"text":"say \"hi\"\nnext"}""",
             HubUrls.ideaJson("say \"hi\"\nnext"),
+        )
+    }
+}
+
+class PairUrlsTest {
+    @Test
+    fun buildsAndParsesCustomScheme() {
+        val raw = PairUrls.build(
+            "https://brand-studio-hub.fly.dev",
+            "ak_test",
+            "https://app.mybrandstudio.club/capture",
+        )
+        val pair = PairUrls.parse(raw)
+        assertEquals("https://brand-studio-hub.fly.dev", pair?.hubUrl)
+        assertEquals("ak_test", pair?.hubToken)
+        assertEquals("https://app.mybrandstudio.club/capture", pair?.captureUrl)
+        assertTrue(raw.startsWith("saltbubble://pair?"))
+    }
+
+    @Test
+    fun parsesHttpsLanding() {
+        val pair = PairUrls.parse(
+            "https://app.mybrandstudio.club/salt-bubble/pair?hub=https%3A%2F%2Fbrand-studio-hub.fly.dev&key=ak_one",
+        )
+        assertEquals("https://brand-studio-hub.fly.dev", pair?.hubUrl)
+        assertEquals("ak_one", pair?.hubToken)
+    }
+
+    @Test
+    fun rejectsCleartextHub() {
+        assertNull(
+            PairUrls.parse("saltbubble://pair?hub=http://evil.example&key=ak_one"),
         )
     }
 }
