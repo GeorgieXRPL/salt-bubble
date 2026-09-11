@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Salt Remote Bridge on Tailscale is HTTP by default. -->
+    <!-- saltvoice-local remote_bridge on Tailscale is HTTP by default. -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />

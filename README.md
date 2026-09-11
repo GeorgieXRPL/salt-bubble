@@ -1,10 +1,10 @@
-
-Messenger-style floating bubble for Android. Talk over Tailscale to **Salt Remote Bridge** on your Windows PC (Whisper), then send the transcript toward **Grok Bot** and **Brand Studio Capture** without leaving Camera, Chrome, or the cut you are making.
+Messenger-style floating bubble for Android. Talk over Tailscale to **saltvoice-local** `remote_bridge` on your Windows PC (Whisper), then send the transcript toward **Grok Bot on Android** and **My Brand Studio Capture** without leaving Camera, Chrome, or the cut you are making.
 
 - Package: `com.easton.saltbubble`
 - Intended GitHub repo: [github.com/GeorgieXRPL/salt-bubble](https://github.com/GeorgieXRPL/salt-bubble)
+- Whisper bridge: [github.com/GeorgieXRPL/saltvoice-local](https://github.com/GeorgieXRPL/saltvoice-local)
 
-This is the phone HUD for Easton / Great Gatspy. It is not a Termux CLI and it does not inject into Grok Bot — there is no public inject API. Send copies the line, toasts **Paste in Grok Bot**, and opens a share sheet.
+This is the phone HUD for Easton / Great Gatspy. It is not a Termux CLI and it does **not** inject into Grok Bot — there is no public inject API.
 
 ## Clone
 
@@ -67,9 +67,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Or use Android Studio **Run** on a USB-debugged phone.
 
-## Tailscale bridge URL
+## saltvoice-local (Whisper over Tailscale)
 
-Salt Bubble does **not** run Whisper on the phone. It POSTs audio to Salt Remote Bridge on your PC.
+Salt Bubble does **not** run Whisper on the phone. It POSTs 16 kHz mono WAV to **saltvoice-local** on your PC. Enable **`remote_bridge`** (that is the default). The existing `TranscriptionClient` talks HTTP over Tailscale:
 
 | Setting | Default |
 | --- | --- |
@@ -80,25 +80,74 @@ Salt Bubble does **not** run Whisper on the phone. It POSTs audio to Salt Remote
 | JSON | `POST /transcribe` — multipart `audio` or `file`, body `{ "text": "…" }` |
 | Plain text | `POST /transcribe.txt` (fallback) |
 
-**In the app:** open Salt Bubble → **Host, port, Capture URL**. Change host/port if your MagicDNS name is different. Phone and PC must be on the same tailnet, and the Windows bridge must be listening on that port.
+**In the app:** open Salt Bubble → **Bridge, Grok, Capture**. Change host/port if your MagicDNS name is different. Phone and PC must be on the same tailnet, and saltvoice-local must be listening on that port.
 
 HTTP cleartext is allowed on purpose — the default Tailscale bridge is `http://`, not HTTPS.
+
+Repo: [github.com/GeorgieXRPL/saltvoice-local](https://github.com/GeorgieXRPL/saltvoice-local)
+
+## Grok Bot on Android
+
+There is **no Grok inject API**. Send always copies the transcript to the clipboard, then:
+
+1. `ACTION_SEND` `text/plain` targeted at `ai.x.grok.bot` (override the package in Settings if needed).
+2. If that fails, launch the package and toast **Paste in Grok Bot**.
+3. Same sequence for fallback package `ai.x.grok`.
+4. Last resort: a generic share chooser.
+
+The home screen shows **Grok Bot installed / not installed** via `PackageManager` (see `<queries>` in the manifest).
+
+## Brand Studio Capture
+
+Capture URL default: `https://app.mybrandstudio.club/capture`.
+
+When destination is **Brand Studio** or **Both**:
+
+1. Clipboard already has the transcript.
+2. Open Capture with `?text=` (or `&text=` if the URL already has a query) URL-encoded prefill.
+3. If you set an optional deep link: custom schemes open as-is; `http(s)` links also get the text query.
+4. No extra share sheet for Capture (too noisy). Share is only Grok’s last resort.
+
+### Optional hub Agent API
+
+If you paste an Agent API key (`ak_…`) in Settings and leave **POST idea to hub when sending to Brand Studio** on:
+
+- `POST {hubUrl}/api/ideas`
+- `Authorization: Bearer {token}`
+- body `{"text":"…"}`
+- success `200` / `201`
+
+Default hub: `https://brand-studio-hub.fly.dev`. A blank token skips the POST. A failed POST does not undo Grok/Capture send; the overlay shows `Could not POST idea: …`.
 
 ## What v1 does
 
 1. Floating cyan bubble over other apps (`SYSTEM_ALERT_WINDOW`).
 2. Tap to expand a small messenger thread (voice/text + status).
-3. Hold-to-talk: records 16 kHz mono WAV, POSTs it to the PC bridge, shows the transcript.
-4. Per-message send: Grok Bot (clipboard + share + paste toast), Brand Studio Capture (clipboard + open URL), or both.
-5. Foreground service notification so the overlay stays alive while you work in other apps.
+3. Hold-to-talk: records 16 kHz mono WAV, POSTs it to saltvoice-local `remote_bridge`, shows the transcript.
+4. Per-message send: Grok Bot (clipboard + targeted share / launch + paste), Brand Studio Capture (`?text=` prefill), or both.
+5. Optional `POST /api/ideas` when an `ak_` hub token is set.
+6. Foreground service notification so the overlay stays alive while you work in other apps.
 
-Out of scope: on-device Whisper, a Windows overlay rewrite, a fake Grok Bot API, Brand Studio private write APIs.
+Out of scope: on-device Whisper, a Windows overlay rewrite, a fake Grok Bot inject API.
 
 ## Install and first run
 
 1. Install the debug APK (sideload). Android may warn that the app is from an unknown source — allow it.
+2. Open Salt Bubble. Grant **Draw over other apps**, **Microphone**, and (Android 13+) **Notifications**.
+3. Confirm the bridge URL matches your PC’s Tailscale MagicDNS name and that [saltvoice-local](https://github.com/GeorgieXRPL/saltvoice-local) is running with **remote_bridge** enabled (default port `8791`).
+4. Install **Grok Bot** (`ai.x.grok.bot`) if you want share-to-Grok. Capture works in the browser either way.
+5. Optional: paste a Brand Studio Agent key (`ak_…`) in Settings if you want send to also `POST /api/ideas`.
+6. Tap **Launch bubble**, then hold-to-talk from Camera or Chrome.
+
+### Permissions
+
+| Permission | Why |
+| --- | --- |
+| Draw over other apps | Floating HUD over Camera / Chrome |
+| Microphone | Hold-to-talk WAV |
+| Notifications | Foreground service while the overlay is up |
 | Foreground service (mic + special use) | Stay alive while recording and while the HUD is up |
-| Internet | HTTP to the Tailscale bridge |
+| Internet | HTTP to the Tailscale bridge and optional hub POST |
 
 ## Publish to GitHub
 
@@ -133,4 +182,26 @@ Use `--public` instead of `--private` if you want it public.
 
 ## Project layout
 
+```
+salt-bubble/
+  README.md
+  settings.gradle.kts
+  app/build.gradle.kts
+  app/src/main/AndroidManifest.xml
+  app/src/main/java/com/easton/saltbubble/
+    MainActivity.kt              # permissions + Grok install check
+    SaltBubbleApp.kt            # SettingsStore, TranscriptionClient, BrandStudioClient, SendHelper
+    audio/WavRecorder.kt
+    data/Models.kt               # AppSettings, CaptureUrls, GrokTargets
+    data/SettingsStore.kt
+    net/TranscriptionClient.kt  # POST /transcribe to saltvoice-local
+    net/BrandStudioClient.kt     # optional POST /api/ideas
+    overlay/                     # bubble service, chat controller (do not rewrite)
+    send/SendHelper.kt           # clipboard + Grok package share + Capture ?text=
+    send/GrokApps.kt            # PackageManager probe
+    ui/home/HomeScreen.kt
+    ui/settings/SettingsScreen.kt
+    ui/overlay/OverlayRoot.kt
+  app/src/test/java/com/easton/saltbubble/
+    BridgeUrlsTest.kt
 ```

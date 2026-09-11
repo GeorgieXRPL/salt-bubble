@@ -10,7 +10,9 @@ import android.os.Looper
 import android.widget.Toast
 import com.easton.saltbubble.R
 import com.easton.saltbubble.data.AppSettings
+import com.easton.saltbubble.data.CaptureUrls
 import com.easton.saltbubble.data.Destination
+import com.easton.saltbubble.data.GrokTargets
 
 class SendHelper(private val context: Context) {
     private val main = Handler(Looper.getMainLooper())
@@ -20,19 +22,11 @@ class SendHelper(private val context: Context) {
         if (trimmed.isEmpty()) return
         copy(trimmed)
         when (destination) {
-            Destination.GrokBot -> {
-                toast(context.getString(R.string.paste_in_grok))
-                share(trimmed, "Send to Grok Bot")
-            }
-            Destination.BrandStudio -> {
-                toast("Transcript copied — drop it into Capture")
-                openStudio(settings)
-                share(trimmed, "Send to Brand Studio Capture")
-            }
+            Destination.GrokBot -> sendToGrok(trimmed, settings.grokPackage)
+            Destination.BrandStudio -> openCapture(settings, trimmed)
             Destination.Both -> {
-                toast("Copied. Paste in Grok Bot, or drop into Capture.")
-                openStudio(settings)
-                share(trimmed, "Send transcript")
+                openCapture(settings, trimmed)
+                sendToGrok(trimmed, settings.grokPackage)
             }
         }
     }
@@ -42,22 +36,54 @@ class SendHelper(private val context: Context) {
         toast("Copied to clipboard")
     }
 
-    fun grokPasteHelper(text: String) {
-        copy(text)
+    fun grokPasteHelper(text: String, settings: AppSettings = AppSettings()) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+        copy(trimmed)
+        sendToGrok(trimmed, settings.grokPackage)
+    }
+
+    fun openStudio(settings: AppSettings, text: String = "") {
+        openCapture(settings, text)
+    }
+
+    private fun sendToGrok(text: String, preferred: String) {
         toast(context.getString(R.string.paste_in_grok))
+        for (pkg in GrokTargets.packages(preferred.ifBlank { GrokTargets.BOT })) {
+            if (tryActionSend(text, pkg)) return
+            if (tryLaunch(pkg)) return
+        }
         share(text, "Send to Grok Bot")
     }
 
-    fun openStudio(settings: AppSettings) {
-        val deep = settings.captureDeepLink.trim()
-        val web = settings.captureUrl.trim().ifBlank { AppSettings.DEFAULT_CAPTURE_URL }
-        val target = if (deep.isNotEmpty()) deep else web
-        openUri(target)
+    private fun tryActionSend(text: String, pkg: String): Boolean {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            putExtra(Intent.EXTRA_SUBJECT, "Salt Bubble")
+            setPackage(pkg)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (send.resolveActivity(context.packageManager) == null) return false
+        return runCatching {
+            context.startActivity(send)
+            true
+        }.getOrDefault(false)
     }
 
-    private fun copy(text: String) {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("Salt Bubble transcript", text))
+    private fun tryLaunch(pkg: String): Boolean {
+        val launch = context.packageManager.getLaunchIntentForPackage(pkg) ?: return false
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return runCatching {
+            context.startActivity(launch)
+            true
+        }.getOrDefault(false)
+    }
+
+    private fun openCapture(settings: AppSettings, text: String) {
+        val target = CaptureUrls.target(settings.captureUrl, settings.captureDeepLink, text)
+        if (target.isBlank()) return
+        openUri(target)
     }
 
     private fun share(text: String, title: String) {
@@ -75,6 +101,11 @@ class SendHelper(private val context: Context) {
         val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return
         val view = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(view) }
+    }
+
+    private fun copy(text: String) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("Salt Bubble transcript", text))
     }
 
     private fun toast(message: String) {

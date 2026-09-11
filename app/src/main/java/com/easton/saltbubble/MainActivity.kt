@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.easton.saltbubble.data.AppSettings
 import com.easton.saltbubble.overlay.BubbleService
+import com.easton.saltbubble.send.GrokApps
 import com.easton.saltbubble.ui.home.HomeScreen
 import com.easton.saltbubble.ui.home.PermissionSnapshot
 import com.easton.saltbubble.ui.settings.SettingsScreen
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
                     HomeScreen(
                         settings = settings,
                         permissions = currentPermissions(tick),
+                        grokInstalled = GrokApps(packageManager).anyInstalled(settings.grokPackage),
                         onLaunch = ::launchBubble,
                         onStop = { BubbleService.stop(this) },
                         onSettings = { showSettings = true },

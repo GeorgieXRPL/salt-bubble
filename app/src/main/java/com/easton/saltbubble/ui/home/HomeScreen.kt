@@ -23,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.easton.saltbubble.data.AppSettings
+import com.easton.saltbubble.data.GrokTargets
 import com.easton.saltbubble.ui.theme.Cyan
 import com.easton.saltbubble.ui.theme.CyanDim
 import com.easton.saltbubble.ui.theme.CyanSoft
@@ -64,6 +63,7 @@ data class PermissionSnapshot(
 fun HomeScreen(
     settings: AppSettings,
     permissions: PermissionSnapshot,
+    grokInstalled: Boolean,
     onLaunch: () -> Unit,
     onStop: () -> Unit,
     onSettings: () -> Unit,
@@ -160,6 +160,37 @@ fun HomeScreen(
             )
         }
 
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(NightElevated)
+                .border(1.dp, Stroke, RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (grokInstalled) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                tint = if (grokInstalled) Cyan else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(end = 10.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (grokInstalled) "Grok Bot installed" else "Grok Bot not installed",
+                    color = Ink,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    settings.grokPackage.ifBlank { GrokTargets.BOT },
+                    color = InkMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = if (permissions.overlayRunning) onStop else onLaunch,
@@ -182,7 +213,7 @@ fun HomeScreen(
             shape = RoundedCornerShape(14.dp),
         ) {
             Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-            Text("Host, port, Capture URL")
+            Text("Bridge, Grok, Capture")
         }
 
         Spacer(Modifier.height(24.dp))
@@ -190,9 +221,9 @@ fun HomeScreen(
         Spacer(Modifier.height(8.dp))
         HowTo("1", "Grant overlay, then Launch bubble. A cyan mic appears over everything.")
         HowTo("2", "Tap the bubble to open the messenger. Drag it out of the way.")
-        HowTo("3", "Hold HOLD TO TALK, speak, release. Salt Remote Bridge on your PC returns text.")
-        HowTo("4", "Grok Bot copies + share sheet and toasts “Paste in Grok Bot”. There is no public inject API.")
-        HowTo("5", "Brand Studio opens Capture and leaves the transcript on the clipboard.")
+        HowTo("3", "Hold HOLD TO TALK, speak, release. saltvoice-local on your PC (remote_bridge) returns text.")
+        HowTo("4", "Grok Bot gets the line on the clipboard, then ACTION_SEND into ai.x.grok.bot (fallback ai.x.grok). If share does not land, the bot opens and you paste. No inject API.")
+        HowTo("5", "Brand Studio opens Capture with ?text= prefilled. Optional Agent key (ak_…) also POSTs /api/ideas. No extra share sheet.")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(
                 androidx.compose.ui.platform.LocalContext.current,

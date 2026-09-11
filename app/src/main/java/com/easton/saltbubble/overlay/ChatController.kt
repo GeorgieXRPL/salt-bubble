@@ -8,6 +8,7 @@ import com.easton.saltbubble.data.Destination
 import com.easton.saltbubble.data.MessageRole
 import com.easton.saltbubble.data.MessageStatus
 import com.easton.saltbubble.data.SettingsStore
+import com.easton.saltbubble.net.BrandStudioClient
 import com.easton.saltbubble.net.TranscriptionClient
 import com.easton.saltbubble.saltBubble
 import com.easton.saltbubble.send.SendHelper
@@ -26,6 +27,7 @@ class ChatController(
     private val scope: CoroutineScope,
     private val settingsStore: SettingsStore = app.saltBubble.settingsStore,
     private val client: TranscriptionClient = app.saltBubble.transcriptionClient,
+    private val brandStudio: BrandStudioClient = app.saltBubble.brandStudioClient,
     private val sendHelper: SendHelper = app.saltBubble.sendHelper,
     private val recorder: WavRecorder = WavRecorder(app),
 ) {
@@ -131,6 +133,7 @@ class ChatController(
                 if (it.id == messageId) it.copy(sentTo = it.sentTo + destination) else it
             }
         }
+        maybePostIdea(message.text, destination)
     }
 
     fun copy(messageId: String) {
@@ -140,7 +143,7 @@ class ChatController(
 
     fun grokHelper(messageId: String) {
         val message = _messages.value.firstOrNull { it.id == messageId } ?: return
-        sendHelper.grokPasteHelper(message.text)
+        sendHelper.grokPasteHelper(message.text, settings)
         _messages.update { list ->
             list.map {
                 if (it.id == messageId) it.copy(sentTo = it.sentTo + Destination.GrokBot) else it
@@ -150,6 +153,33 @@ class ChatController(
 
     fun openStudio() {
         sendHelper.openStudio(settings)
+    }
+
+    private fun maybePostIdea(text: String, destination: Destination) {
+        val snapshot = settings
+        if (!snapshot.postIdeaOnSend) return
+        if (snapshot.hubToken.isBlank()) return
+        if (!destination.includesBrandStudio()) return
+        scope.launch {
+            runCatching { brandStudio.addIdea(snapshot.hubUrl, snapshot.hubToken, text) }
+                .onSuccess {
+                    push(
+                        ChatMessage(
+                            role = MessageRole.Status,
+                            text = "Saved to Brand Studio ideas",
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    val detail = error.message ?: error.javaClass.simpleName
+                    push(
+                        ChatMessage(
+                            role = MessageRole.Status,
+                            text = "Could not POST idea: $detail",
+                        ),
+                    )
+                }
+        }
     }
 
     private fun transcribe(file: File) {

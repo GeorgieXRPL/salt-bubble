@@ -1,9 +1,16 @@
 package com.easton.saltbubble
 
+import com.easton.saltbubble.data.AppSettings
 import com.easton.saltbubble.data.BridgeUrls
+import com.easton.saltbubble.data.CaptureUrls
+import com.easton.saltbubble.data.Destination
+import com.easton.saltbubble.data.GrokTargets
+import com.easton.saltbubble.net.HubUrls
 import com.easton.saltbubble.net.TranscriptParser
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BridgeUrlsTest {
@@ -56,5 +63,146 @@ class TranscriptParserTest {
     @Test
     fun emptyIsNull() {
         assertNull(TranscriptParser.parse("   "))
+    }
+}
+
+class CaptureUrlsTest {
+    @Test
+    fun appendsQuestionTextWhenNoQuery() {
+        assertEquals(
+            "https://app.mybrandstudio.club/capture?text=hello",
+            CaptureUrls.withTranscript("https://app.mybrandstudio.club/capture", "hello"),
+        )
+    }
+
+    @Test
+    fun appendsAmpersandTextWhenQueryExists() {
+        assertEquals(
+            "https://app.mybrandstudio.club/capture?foo=1&text=hello",
+            CaptureUrls.withTranscript("https://app.mybrandstudio.club/capture?foo=1", "hello"),
+        )
+    }
+
+    @Test
+    fun doesNotSmashExistingParams() {
+        val url = CaptureUrls.withTranscript(
+            "https://app.mybrandstudio.club/capture?foo=1&bar=2",
+            "idea",
+        )
+        assertTrue(url.startsWith("https://app.mybrandstudio.club/capture?foo=1&bar=2&text="))
+        assertTrue(url.endsWith("text=idea"))
+    }
+
+    @Test
+    fun encodesSpaces() {
+        assertEquals(
+            "https://app.mybrandstudio.club/capture?text=hello%20world",
+            CaptureUrls.withTranscript("https://app.mybrandstudio.club/capture", "hello world"),
+        )
+    }
+
+    @Test
+    fun usesCaptureUrlWithTextPrefill() {
+        assertEquals(
+            "https://app.mybrandstudio.club/capture?text=clip",
+            CaptureUrls.target("https://app.mybrandstudio.club/capture", "", "clip"),
+        )
+    }
+
+    @Test
+    fun httpDeepLinkGetsTextPrefill() {
+        assertEquals(
+            "https://app.mybrandstudio.club/capture?src=hud&text=clip",
+            CaptureUrls.target(
+                "https://app.mybrandstudio.club/capture",
+                "https://app.mybrandstudio.club/capture?src=hud",
+                "clip",
+            ),
+        )
+    }
+
+    @Test
+    fun customSchemeDeepLinkIsNotRewritten() {
+        assertEquals(
+            "mybrandstudio://capture",
+            CaptureUrls.target("https://app.mybrandstudio.club/capture", "mybrandstudio://capture", "clip"),
+        )
+    }
+}
+
+class GrokTargetsTest {
+    @Test
+    fun defaultPreferredKeepsBotThenChat() {
+        assertEquals(
+            listOf(GrokTargets.BOT, GrokTargets.CHAT),
+            GrokTargets.packages(GrokTargets.BOT),
+        )
+    }
+
+    @Test
+    fun preferredFirstThenUniqueFallbacks() {
+        assertEquals(
+            listOf("custom.pkg", GrokTargets.BOT, GrokTargets.CHAT),
+            GrokTargets.packages("custom.pkg"),
+        )
+    }
+
+    @Test
+    fun chatPreferredDoesNotDuplicate() {
+        assertEquals(
+            listOf(GrokTargets.CHAT, GrokTargets.BOT),
+            GrokTargets.packages(GrokTargets.CHAT),
+        )
+    }
+
+    @Test
+    fun blankPreferredSkipsEmpty() {
+        assertEquals(
+            listOf(GrokTargets.BOT, GrokTargets.CHAT),
+            GrokTargets.packages("  "),
+        )
+    }
+}
+
+class HubUrlsTest {
+    @Test
+    fun joinsIdeasPath() {
+        assertEquals(
+            "https://brand-studio-hub.fly.dev/api/ideas",
+            HubUrls.ideasUrl("https://brand-studio-hub.fly.dev"),
+        )
+    }
+
+    @Test
+    fun trimsTrailingSlash() {
+        assertEquals(
+            "https://brand-studio-hub.fly.dev/api/ideas",
+            HubUrls.ideasUrl("https://brand-studio-hub.fly.dev/"),
+        )
+    }
+
+    @Test
+    fun blankFallsBackToDefaultHub() {
+        assertEquals(
+            "${AppSettings.DEFAULT_HUB_URL}/api/ideas",
+            HubUrls.ideasUrl("   "),
+        )
+    }
+
+    @Test
+    fun ideaJsonEscapesQuotesAndNewlines() {
+        assertEquals(
+            """{"text":"say \"hi\"\nnext"}""",
+            HubUrls.ideaJson("say \"hi\"\nnext"),
+        )
+    }
+}
+
+class DestinationTest {
+    @Test
+    fun brandStudioAndBothIncludeStudio() {
+        assertTrue(Destination.BrandStudio.includesBrandStudio())
+        assertTrue(Destination.Both.includesBrandStudio())
+        assertFalse(Destination.GrokBot.includesBrandStudio())
     }
 }

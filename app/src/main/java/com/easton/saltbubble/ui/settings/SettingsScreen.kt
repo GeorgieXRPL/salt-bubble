@@ -33,8 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.easton.saltbubble.data.AppSettings
+import com.easton.saltbubble.data.BridgeUrls
 import com.easton.saltbubble.data.Destination
 import com.easton.saltbubble.data.SettingsStore
 import com.easton.saltbubble.ui.theme.Cyan
@@ -56,8 +58,25 @@ fun SettingsScreen(
     var capture by remember(settings.captureUrl) { mutableStateOf(settings.captureUrl) }
     var deepLink by remember(settings.captureDeepLink) { mutableStateOf(settings.captureDeepLink) }
     var destination by remember(settings.defaultDestination) { mutableStateOf(settings.defaultDestination) }
+    var grokPackage by remember(settings.grokPackage) { mutableStateOf(settings.grokPackage) }
+    var hubUrl by remember(settings.hubUrl) { mutableStateOf(settings.hubUrl) }
+    var hubToken by remember(settings.hubToken) { mutableStateOf(settings.hubToken) }
+    var postIdeaOnSend by remember(settings.postIdeaOnSend) { mutableStateOf(settings.postIdeaOnSend) }
 
-    fun commit(next: AppSettings) {
+    fun current(): AppSettings = AppSettings(
+        bridgeHost = host,
+        bridgePort = port.toIntOrNull() ?: settings.bridgePort,
+        bridgeUseHttps = https,
+        captureUrl = capture,
+        captureDeepLink = deepLink,
+        defaultDestination = destination,
+        grokPackage = grokPackage,
+        hubUrl = hubUrl,
+        hubToken = hubToken,
+        postIdeaOnSend = postIdeaOnSend,
+    )
+
+    fun commit(next: AppSettings = current()) {
         scope.launch { store.update { next } }
     }
 
@@ -76,19 +95,19 @@ fun SettingsScreen(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "Salt Remote Bridge lives on your Windows PC. Phone reaches it over Tailscale. HTTP is expected.",
+            "saltvoice-local on your Windows PC. Enable remote_bridge (default). Phone reaches it over Tailscale HTTP.",
             color = InkMuted,
             style = MaterialTheme.typography.bodyMedium,
         )
 
         Spacer(Modifier.height(20.dp))
-        Text("SALT REMOTE BRIDGE", style = MaterialTheme.typography.labelSmall, color = Cyan)
+        Text("SALTVOICE-LOCAL BRIDGE", style = MaterialTheme.typography.labelSmall, color = Cyan)
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = host,
             onValueChange = {
                 host = it
-                commit(settings.copy(bridgeHost = it, bridgePort = port.toIntOrNull() ?: settings.bridgePort, bridgeUseHttps = https, captureUrl = capture, captureDeepLink = deepLink, defaultDestination = destination))
+                commit()
             },
             label = { Text("Host") },
             modifier = Modifier.fillMaxWidth(),
@@ -101,7 +120,7 @@ fun SettingsScreen(
             onValueChange = { value ->
                 port = value.filter { it.isDigit() }.take(5)
                 val parsed = port.toIntOrNull() ?: return@OutlinedTextField
-                commit(settings.copy(bridgeHost = host, bridgePort = parsed, bridgeUseHttps = https, captureUrl = capture, captureDeepLink = deepLink, defaultDestination = destination))
+                commit(current().copy(bridgePort = parsed))
             },
             label = { Text("Port") },
             modifier = Modifier.fillMaxWidth(),
@@ -123,13 +142,35 @@ fun SettingsScreen(
                 checked = https,
                 onCheckedChange = {
                     https = it
-                    commit(settings.copy(bridgeHost = host, bridgePort = port.toIntOrNull() ?: settings.bridgePort, bridgeUseHttps = it, captureUrl = capture, captureDeepLink = deepLink, defaultDestination = destination))
+                    commit()
                 },
                 colors = SwitchDefaults.colors(checkedTrackColor = Cyan),
             )
         }
         Text(
-            "Resolved URL  ${com.easton.saltbubble.data.BridgeUrls.baseUrl(host, port.toIntOrNull() ?: AppSettings.DEFAULT_BRIDGE_PORT, https)}",
+            "Resolved URL  ${BridgeUrls.baseUrl(host, port.toIntOrNull() ?: AppSettings.DEFAULT_BRIDGE_PORT, https)}",
+            color = InkMuted,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+
+        Spacer(Modifier.height(24.dp))
+        Text("GROK BOT", style = MaterialTheme.typography.labelSmall, color = Cyan)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = grokPackage,
+            onValueChange = {
+                grokPackage = it
+                commit()
+            },
+            label = { Text("Grok package") },
+            placeholder = { Text(AppSettings.DEFAULT_GROK_PACKAGE) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+        )
+        Text(
+            "Opens Grok Bot (ai.x.grok.bot) with the line on the clipboard. No inject API — paste once if share doesn't land in the composer.",
             color = InkMuted,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp),
@@ -142,7 +183,7 @@ fun SettingsScreen(
             value = capture,
             onValueChange = {
                 capture = it
-                commit(settings.copy(bridgeHost = host, bridgePort = port.toIntOrNull() ?: settings.bridgePort, bridgeUseHttps = https, captureUrl = it, captureDeepLink = deepLink, defaultDestination = destination))
+                commit()
             },
             label = { Text("Capture URL") },
             modifier = Modifier.fillMaxWidth(),
@@ -154,7 +195,7 @@ fun SettingsScreen(
             value = deepLink,
             onValueChange = {
                 deepLink = it
-                commit(settings.copy(bridgeHost = host, bridgePort = port.toIntOrNull() ?: settings.bridgePort, bridgeUseHttps = https, captureUrl = capture, captureDeepLink = it, defaultDestination = destination))
+                commit()
             },
             label = { Text("Optional deep link") },
             placeholder = { Text("mybrandstudio://capture") },
@@ -162,8 +203,55 @@ fun SettingsScreen(
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
         )
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = hubUrl,
+            onValueChange = {
+                hubUrl = it
+                commit()
+            },
+            label = { Text("Hub URL") },
+            placeholder = { Text(AppSettings.DEFAULT_HUB_URL) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+        )
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = hubToken,
+            onValueChange = {
+                hubToken = it
+                commit()
+            },
+            label = { Text("Hub token") },
+            placeholder = { Text("ak_…") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            shape = RoundedCornerShape(12.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("POST idea to hub when sending to Brand Studio", color = Ink)
+                Text("Skipped when the token is blank.", color = InkMuted, style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(
+                checked = postIdeaOnSend,
+                onCheckedChange = {
+                    postIdeaOnSend = it
+                    commit()
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = Cyan),
+            )
+        }
         Text(
-            "No private write API is used. Send copies the transcript and opens Capture so you can drop it in.",
+            "Opens Capture with ?text= prefilled. If you paste an Agent API key (ak_…), Salt Bubble also POSTs /api/ideas.",
             color = InkMuted,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp),
@@ -178,7 +266,7 @@ fun SettingsScreen(
                     selected = destination == item,
                     onClick = {
                         destination = item
-                        commit(settings.copy(bridgeHost = host, bridgePort = port.toIntOrNull() ?: settings.bridgePort, bridgeUseHttps = https, captureUrl = capture, captureDeepLink = deepLink, defaultDestination = item))
+                        commit()
                     },
                     label = { Text(item.label) },
                     colors = FilterChipDefaults.filterChipColors(
@@ -188,11 +276,6 @@ fun SettingsScreen(
                 )
             }
         }
-        Text(
-            "Grok Bot has no public inject API. Salt Bubble copies the line and opens a share sheet — paste it in the bot yourself.",
-            color = InkMuted,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 12.dp, bottom = 24.dp),
-        )
+        Spacer(Modifier.height(24.dp))
     }
 }
