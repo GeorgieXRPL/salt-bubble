@@ -190,6 +190,22 @@ class HubUrlsTest {
     }
 
     @Test
+    fun rejectsCleartextHub() {
+        assertFalse(HubUrls.looksSafeHub("http://evil.example/hub"))
+    }
+
+    @Test
+    fun allowsHttpsAndLocalhost() {
+        assertTrue(HubUrls.looksSafeHub("https://brand-studio-hub.fly.dev"))
+        assertTrue(HubUrls.looksSafeHub("http://localhost:8787"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun ideasUrlRejectsHttp() {
+        HubUrls.ideasUrl("http://evil.example/hub")
+    }
+
+    @Test
     fun ideaJsonEscapesQuotesAndNewlines() {
         assertEquals(
             """{"text":"say \"hi\"\nnext"}""",

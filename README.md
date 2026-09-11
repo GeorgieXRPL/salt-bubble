@@ -77,10 +77,11 @@ Salt Bubble does **not** run Whisper on the phone. It POSTs 16 kHz mono WAV to *
 | Port | `8791` |
 | HTTPS | off (HTTP over Tailscale) |
 | Base URL | `http://mypc.tailc2bc11.ts.net:8791` |
-| JSON | `POST /transcribe` — multipart `audio` or `file`, body `{ "text": "…" }` |
+| JSON | `POST /transcribe` — multipart `audio` or `file`, header `X-Salt-Token`, body `{ "text": "…" }` |
 | Plain text | `POST /transcribe.txt` (fallback) |
+| Token | Printed as `BRIDGE TOKEN:` on the PC console; also `%LOCALAPPDATA%\SaltvoiceLocal\bridge.token` |
 
-**In the app:** open Salt Bubble → **Bridge, Grok, Capture**. Change host/port if your MagicDNS name is different. Phone and PC must be on the same tailnet, and saltvoice-local must be listening on that port.
+**In the app:** open Salt Bubble → **Bridge, Grok, Capture**. Change host/port if your MagicDNS name is different, then paste the bridge token. Phone and PC must be on the same tailnet, and saltvoice-local must be listening on that port. Use **Ping bridge** on the home screen to check reachability.
 
 HTTP cleartext is allowed on purpose — the default Tailscale bridge is `http://`, not HTTPS.
 
@@ -135,9 +136,10 @@ Out of scope: on-device Whisper, a Windows overlay rewrite, a fake Grok Bot inje
 1. Install the debug APK (sideload). Android may warn that the app is from an unknown source — allow it.
 2. Open Salt Bubble. Grant **Draw over other apps**, **Microphone**, and (Android 13+) **Notifications**.
 3. Confirm the bridge URL matches your PC’s Tailscale MagicDNS name and that [saltvoice-local](https://github.com/GeorgieXRPL/saltvoice-local) is running with **remote_bridge** enabled (default port `8791`).
-4. Install **Grok Bot** (`ai.x.grok.bot`) if you want share-to-Grok. Capture works in the browser either way.
-5. Optional: paste a Brand Studio Agent key (`ak_…`) in Settings if you want send to also `POST /api/ideas`.
-6. Tap **Launch bubble**, then hold-to-talk from Camera or Chrome.
+4. Paste the `BRIDGE TOKEN` from the PC console into Salt Bubble Settings. Tap **Ping bridge**.
+5. Install **Grok Bot** (`ai.x.grok.bot`) if you want share-to-Grok. Capture works in the browser either way.
+6. Optional: paste a Brand Studio Agent key (`ak_…`) in Settings if you want send to also `POST /api/ideas`.
+7. Tap **Launch bubble**, then hold-to-talk from Camera or Chrome.
 
 ### Permissions
 

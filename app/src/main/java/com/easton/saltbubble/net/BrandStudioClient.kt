@@ -41,8 +41,18 @@ class BrandStudioClient(
 }
 
 object HubUrls {
+    fun looksSafeHub(hubUrl: String): Boolean {
+        val root = hubUrl.trim().ifBlank { AppSettings.DEFAULT_HUB_URL }.lowercase()
+        return root.startsWith("https://") ||
+            root.startsWith("http://localhost") ||
+            root.startsWith("http://127.0.0.1")
+    }
+
     fun ideasUrl(hubUrl: String): String {
         val root = hubUrl.trim().ifBlank { AppSettings.DEFAULT_HUB_URL }.trimEnd('/')
+        if (!looksSafeHub(root)) {
+            throw IllegalArgumentException("Hub URL must be https")
+        }
         return "$root/api/ideas"
     }
 

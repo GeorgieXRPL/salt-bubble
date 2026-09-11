@@ -25,6 +25,7 @@ import com.easton.saltbubble.ui.settings.SettingsScreen
 import com.easton.saltbubble.ui.theme.SaltBubbleTheme
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val settingsFlow by lazy {
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
 
     private var showSettings by mutableStateOf(false)
     private var permissionTick by mutableStateOf(0)
+    private var bridgePing by mutableStateOf("")
 
     private val micLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -63,9 +65,11 @@ class MainActivity : ComponentActivity() {
                         settings = settings,
                         permissions = currentPermissions(tick),
                         grokInstalled = GrokApps(packageManager).anyInstalled(settings.grokPackage),
+                        bridgePing = bridgePing,
                         onLaunch = ::launchBubble,
                         onStop = { BubbleService.stop(this) },
                         onSettings = { showSettings = true },
+                        onPingBridge = { pingBridge(settings) },
                         onRequestMic = {
                             micLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         },
@@ -102,6 +106,34 @@ class MainActivity : ComponentActivity() {
             notifications = notificationsOk,
             overlayRunning = BubbleService.isLikelyRunning(this),
         )
+    }
+
+    private fun pingBridge(settings: AppSettings) {
+        bridgePing = "Pinging…"
+        lifecycleScope.launch {
+            runCatching { application.saltBubble.transcriptionClient.health(settings.bridgeBaseUrl) }
+                .onSuccess { health ->
+                    bridgePing = if (health.ok) {
+                        if (health.authRequired && settings.bridgeToken.isBlank()) {
+                            "Bridge is up — paste the BRIDGE TOKEN in Settings"
+                        } else {
+                            "Bridge is up"
+                        }
+                    } else {
+                        "Bridge answered but is not healthy"
+                    }
+                }
+                .onFailure { error ->
+                    val raw = error.message ?: error.javaClass.simpleName
+                    bridgePing = if (raw.contains("Failed to connect", ignoreCase = true) ||
+                        raw.contains("Unable to resolve", ignoreCase = true)
+                    ) {
+                        "Could not reach ${settings.bridgeBaseUrl}"
+                    } else {
+                        raw.take(120)
+                    }
+                }
+        }
     }
 
     private fun launchBubble() {

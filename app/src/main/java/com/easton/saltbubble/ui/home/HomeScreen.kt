@@ -64,9 +64,11 @@ fun HomeScreen(
     settings: AppSettings,
     permissions: PermissionSnapshot,
     grokInstalled: Boolean,
+    bridgePing: String,
     onLaunch: () -> Unit,
     onStop: () -> Unit,
     onSettings: () -> Unit,
+    onPingBridge: () -> Unit,
     onRequestMic: () -> Unit,
     onRequestNotifications: () -> Unit,
     onRequestOverlay: () -> Unit,
@@ -158,6 +160,24 @@ fun HomeScreen(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            Text(
+                if (settings.bridgeToken.isBlank()) "Bridge token missing" else "Bridge token set",
+                color = if (settings.bridgeToken.isBlank()) MaterialTheme.colorScheme.error else InkMuted,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (bridgePing.isNotBlank()) {
+                Text(
+                    bridgePing,
+                    color = InkMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(onClick = onPingBridge, shape = RoundedCornerShape(10.dp)) {
+                Text("Ping bridge")
+            }
         }
 
         Spacer(Modifier.height(10.dp))
@@ -221,7 +241,7 @@ fun HomeScreen(
         Spacer(Modifier.height(8.dp))
         HowTo("1", "Grant overlay, then Launch bubble. A cyan mic appears over everything.")
         HowTo("2", "Tap the bubble to open the messenger. Drag it out of the way.")
-        HowTo("3", "Hold HOLD TO TALK, speak, release. saltvoice-local on your PC (remote_bridge) returns text.")
+        HowTo("3", "Paste the PC BRIDGE TOKEN in Settings, then hold HOLD TO TALK. saltvoice-local returns text.")
         HowTo("4", "Grok Bot gets the line on the clipboard, then ACTION_SEND into ai.x.grok.bot (fallback ai.x.grok). If share does not land, the bot opens and you paste. No inject API.")
         HowTo("5", "Brand Studio opens Capture with ?text= prefilled. Optional Agent key (ak_…) also POSTs /api/ideas. No extra share sheet.")
 

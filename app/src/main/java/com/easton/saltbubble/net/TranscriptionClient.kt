@@ -14,9 +14,24 @@ import java.util.concurrent.TimeUnit
 class TranscriptionClient(
     private val http: OkHttpClient = defaultClient(),
 ) {
-    suspend fun transcribe(baseUrl: String, wavFile: File): String = withContext(Dispatchers.IO) {
+    suspend fun health(baseUrl: String): BridgeHealth = withContext(Dispatchers.IO) {
+        val url = "${baseUrl.trimEnd('/')}/health"
+        val request = Request.Builder().url(url).get().build()
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException(httpErrorMessage(response.code, raw))
+            }
+            BridgeHealth(
+                ok = raw.contains("\"ok\"") && !raw.contains("\"ok\":false"),
+                authRequired = raw.contains("\"auth\":true") || raw.contains("\"auth\": true"),
+            )
+        }
+    }
+
+    suspend fun transcribe(baseUrl: String, wavFile: File, token: String = ""): String = withContext(Dispatchers.IO) {
         val root = baseUrl.trimEnd('/')
-        val jsonError = postMultipart(url = "$root/transcribe", file = wavFile, acceptJson = true)
+        val jsonError = postMultipart(url = "$root/transcribe", file = wavFile, acceptJson = true, token = token)
         if (jsonError is Result.Ok) return@withContext jsonError.text
         if (jsonError is Result.Http && jsonError.code in 200..299) {
             val parsed = TranscriptParser.parse(jsonError.body, jsonError.contentType)
@@ -29,7 +44,7 @@ class TranscriptionClient(
             }
         }
 
-        val txt = postMultipart(url = "$root/transcribe.txt", file = wavFile, acceptJson = false)
+        val txt = postMultipart(url = "$root/transcribe.txt", file = wavFile, acceptJson = false, token = token)
         when (txt) {
             is Result.Ok -> txt.text
             is Result.Http -> {
@@ -47,7 +62,7 @@ class TranscriptionClient(
         }
     }
 
-    private fun postMultipart(url: String, file: File, acceptJson: Boolean): Result {
+    private fun postMultipart(url: String, file: File, acceptJson: Boolean, token: String): Result {
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
@@ -60,6 +75,7 @@ class TranscriptionClient(
         val request = Request.Builder()
             .url(url)
             .header("Accept", if (acceptJson) "application/json, text/plain" else "text/plain, application/json")
+            .apply { if (token.isNotBlank()) header(TOKEN_HEADER, token.trim()) }
             .post(body)
             .build()
         return try {
@@ -95,16 +111,27 @@ class TranscriptionClient(
             .callTimeout(150, TimeUnit.SECONDS)
             .build()
 
+        const val TOKEN_HEADER = "X-Salt-Token"
+
         fun httpErrorMessage(code: Int, body: String): String {
             val snippet = body.trim().replace("\n", " ").take(160)
-            return if (snippet.isBlank()) {
-                "Bridge returned HTTP $code"
-            } else {
-                "Bridge returned HTTP $code: $snippet"
+            return when (code) {
+                401 -> "Bridge rejected the token. Set the same Bridge token as saltvoice-local."
+                429 -> "Bridge rate-limited the phone. Wait a few seconds and try again."
+                else -> if (snippet.isBlank()) {
+                    "Bridge returned HTTP $code"
+                } else {
+                    "Bridge returned HTTP $code: $snippet"
+                }
             }
         }
     }
 }
+
+data class BridgeHealth(
+    val ok: Boolean,
+    val authRequired: Boolean,
+)
 
 object TranscriptParser {
     fun parse(body: String, contentType: String? = null): String? {

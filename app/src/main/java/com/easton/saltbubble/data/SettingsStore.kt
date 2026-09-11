@@ -26,6 +26,7 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.CAPTURE] = next.captureUrl.trim()
             prefs[Keys.DEEP_LINK] = next.captureDeepLink.trim()
             prefs[Keys.DESTINATION] = next.defaultDestination.name
+            prefs[Keys.BRIDGE_TOKEN] = next.bridgeToken.trim()
             prefs[Keys.GROK_PACKAGE] = next.grokPackage.trim().ifBlank { AppSettings.DEFAULT_GROK_PACKAGE }
             prefs[Keys.HUB_URL] = next.hubUrl.trim().ifBlank { AppSettings.DEFAULT_HUB_URL }
             prefs[Keys.HUB_TOKEN] = next.hubToken.trim()
@@ -42,6 +43,7 @@ class SettingsStore(private val context: Context) {
         defaultDestination = runCatching {
             Destination.valueOf(prefs[Keys.DESTINATION] ?: Destination.Both.name)
         }.getOrDefault(Destination.Both),
+        bridgeToken = prefs[Keys.BRIDGE_TOKEN] ?: "",
         grokPackage = prefs[Keys.GROK_PACKAGE]?.ifBlank { null } ?: AppSettings.DEFAULT_GROK_PACKAGE,
         hubUrl = prefs[Keys.HUB_URL]?.ifBlank { null } ?: AppSettings.DEFAULT_HUB_URL,
         hubToken = prefs[Keys.HUB_TOKEN] ?: "",
@@ -55,6 +57,7 @@ class SettingsStore(private val context: Context) {
         val CAPTURE = stringPreferencesKey("capture_url")
         val DEEP_LINK = stringPreferencesKey("capture_deeplink")
         val DESTINATION = stringPreferencesKey("default_destination")
+        val BRIDGE_TOKEN = stringPreferencesKey("bridge_token")
         val GROK_PACKAGE = stringPreferencesKey("grok_package")
         val HUB_URL = stringPreferencesKey("hub_url")
         val HUB_TOKEN = stringPreferencesKey("hub_token")

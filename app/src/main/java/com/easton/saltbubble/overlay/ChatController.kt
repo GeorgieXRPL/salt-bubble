@@ -47,6 +47,8 @@ class ChatController(
     private var pendingFile: File? = null
     private var inflight: Job? = null
     private var seeded = false
+    private var lastIdeaText = ""
+    private var lastIdeaAt = 0L
 
     init {
         scope.launch {
@@ -160,6 +162,10 @@ class ChatController(
         if (!snapshot.postIdeaOnSend) return
         if (snapshot.hubToken.isBlank()) return
         if (!destination.includesBrandStudio()) return
+        val now = System.currentTimeMillis()
+        if (text == lastIdeaText && now - lastIdeaAt < 8_000) return
+        lastIdeaText = text
+        lastIdeaAt = now
         scope.launch {
             runCatching { brandStudio.addIdea(snapshot.hubUrl, snapshot.hubToken, text) }
                 .onSuccess {
@@ -186,17 +192,30 @@ class ChatController(
         inflight?.cancel()
         _busy.value = true
         inflight = scope.launch {
-            val base = settingsStore.settings.first().bridgeBaseUrl
-            runCatching { client.transcribe(base, file) }
+            val snap = settingsStore.settings.first()
+            val base = snap.bridgeBaseUrl
+            runCatching { client.transcribe(base, file, snap.bridgeToken) }
                 .onSuccess { text ->
-                    remove(RECORDING_ID)
-                    push(
-                        ChatMessage(
-                            role = MessageRole.User,
-                            text = text,
-                            status = MessageStatus.Ready,
-                        ),
-                    )
+                    if (text.isBlank()) {
+                        replace(
+                            RECORDING_ID,
+                            ChatMessage(
+                                id = RECORDING_ID,
+                                role = MessageRole.Status,
+                                text = "Heard silence. Hold a little longer.",
+                                status = MessageStatus.Failed,
+                            ),
+                        )
+                    } else {
+                        remove(RECORDING_ID)
+                        push(
+                            ChatMessage(
+                                role = MessageRole.User,
+                                text = text,
+                                status = MessageStatus.Ready,
+                            ),
+                        )
+                    }
                 }
                 .onFailure { error ->
                     replace(
@@ -220,7 +239,10 @@ class ChatController(
             raw.contains("Failed to connect", ignoreCase = true) ||
                 raw.contains("Unable to resolve", ignoreCase = true) ||
                 raw.contains("timeout", ignoreCase = true) ->
-                "Could not reach $base. Is Tailscale up and is Salt Remote Bridge running?"
+                "Could not reach $base. Is Tailscale up and is saltvoice-local running?"
+            raw.contains("rejected the token", ignoreCase = true) ||
+                raw.contains("HTTP 401") ->
+                "Bridge rejected the token. Paste the BRIDGE TOKEN from the PC console into Settings."
             else -> raw
         }
     }

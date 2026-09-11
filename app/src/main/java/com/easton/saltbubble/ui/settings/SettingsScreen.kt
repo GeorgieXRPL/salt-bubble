@@ -58,6 +58,7 @@ fun SettingsScreen(
     var capture by remember(settings.captureUrl) { mutableStateOf(settings.captureUrl) }
     var deepLink by remember(settings.captureDeepLink) { mutableStateOf(settings.captureDeepLink) }
     var destination by remember(settings.defaultDestination) { mutableStateOf(settings.defaultDestination) }
+    var bridgeToken by remember(settings.bridgeToken) { mutableStateOf(settings.bridgeToken) }
     var grokPackage by remember(settings.grokPackage) { mutableStateOf(settings.grokPackage) }
     var hubUrl by remember(settings.hubUrl) { mutableStateOf(settings.hubUrl) }
     var hubToken by remember(settings.hubToken) { mutableStateOf(settings.hubToken) }
@@ -70,6 +71,7 @@ fun SettingsScreen(
         captureUrl = capture,
         captureDeepLink = deepLink,
         defaultDestination = destination,
+        bridgeToken = bridgeToken,
         grokPackage = grokPackage,
         hubUrl = hubUrl,
         hubToken = hubToken,
@@ -149,6 +151,27 @@ fun SettingsScreen(
         }
         Text(
             "Resolved URL  ${BridgeUrls.baseUrl(host, port.toIntOrNull() ?: AppSettings.DEFAULT_BRIDGE_PORT, https)}",
+            color = InkMuted,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = bridgeToken,
+            onValueChange = {
+                bridgeToken = it
+                commit()
+            },
+            label = { Text("Bridge token") },
+            placeholder = { Text("from saltvoice-local console") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            shape = RoundedCornerShape(12.dp),
+        )
+        Text(
+            "Required. Copy BRIDGE TOKEN from the saltvoice-local console (or %LOCALAPPDATA%\\SaltvoiceLocal\\bridge.token).",
             color = InkMuted,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 8.dp),

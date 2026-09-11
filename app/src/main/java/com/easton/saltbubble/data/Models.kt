@@ -42,6 +42,7 @@ data class AppSettings(
     val captureUrl: String = DEFAULT_CAPTURE_URL,
     val captureDeepLink: String = "",
     val defaultDestination: Destination = Destination.Both,
+    val bridgeToken: String = "",
     val grokPackage: String = DEFAULT_GROK_PACKAGE,
     val hubUrl: String = DEFAULT_HUB_URL,
     val hubToken: String = "",
