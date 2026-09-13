@@ -36,6 +36,7 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
 
     private lateinit var chat: ChatController
     private lateinit var overlay: OverlayController
+    private var session: SessionLoop? = null
     private var overlayReady = false
 
     override fun onCreate() {
@@ -47,9 +48,15 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
         overlay = OverlayController(this, chat)
         overlay.attach()
         overlayReady = true
+        session = SessionLoop(application, lifecycleScope, chat).also { it.start() }
         lifecycleScope.launch {
             chat.recording.collectLatest { recording ->
-                enterForeground(recording)
+                enterForeground(recording || chat.phase.value == com.easton.saltbubble.data.SessionPhase.Listening)
+            }
+        }
+        lifecycleScope.launch {
+            chat.phase.collectLatest { phase ->
+                enterForeground(chat.recording.value || phase == com.easton.saltbubble.data.SessionPhase.Listening)
             }
         }
     }
@@ -68,6 +75,8 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
     }
 
     override fun onDestroy() {
+        session?.stop()
+        session = null
         if (overlayReady) overlay.detach()
         store.clear()
         super.onDestroy()
@@ -78,8 +87,14 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
         return null
     }
 
+    fun requestStop() {
+        stopOverlay()
+    }
+
     private fun stopOverlay() {
-        overlay.detach()
+        session?.stop()
+        session = null
+        if (overlayReady) overlay.detach()
         overlayReady = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -88,8 +103,9 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
     private fun enterForeground(recording: Boolean) {
         val notification = buildNotification(recording)
         val type = if (Build.VERSION.SDK_INT >= 34) {
+            // Session loop keeps the mic warm while the bubble is up.
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
-                if (recording) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         } else {
             0
         }
@@ -113,10 +129,10 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
             Intent(this, BubbleService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val text = if (recording) {
-            "Listening — release the mic to transcribe"
-        } else {
-            getString(R.string.notification_text)
+        val text = when {
+            recording -> "Hold-to-talk — release to transcribe"
+            chatInitializedListening() -> "Salt listening — say your task or Salt go on standby"
+            else -> "Salt standby — say Salt wake up"
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_bubble)
@@ -141,6 +157,14 @@ class BubbleService : LifecycleService(), SavedStateRegistryOwner, ViewModelStor
             setShowBadge(false)
         }
         manager.createNotificationChannel(channel)
+    }
+
+    private fun chatInitializedListening(): Boolean {
+        return try {
+            ::chat.isInitialized && chat.phase.value == com.easton.saltbubble.data.SessionPhase.Listening
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     companion object {

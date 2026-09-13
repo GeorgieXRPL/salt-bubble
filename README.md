@@ -222,3 +222,15 @@ salt-bubble/
     SaltBubble.xcodeproj
     SaltBubble/
 ```
+
+
+## Salt session (Local-parity)
+
+With the bubble launched, Salt mirrors Salt Voice Local:
+
+1. **Standby** — listens for `Salt wake up` (does not auto-send tasks).
+2. **Listening** — your spoken instructions auto-send to the current destination.
+3. Voice targets — `Salt send to Grok` / `Salt send to Brand Studio` (or Capture).
+4. **Standby again** — `Salt go on standby`, `bye`, `Salt cut asleep`, etc.
+
+Audio is chunked on-device and transcribed by Salt Remote Bridge on your PC over Tailscale. Hold-to-talk remains as a manual override.

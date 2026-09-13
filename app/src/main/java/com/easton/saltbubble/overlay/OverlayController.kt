@@ -50,6 +50,7 @@ class OverlayController(
                         expanded = _expanded,
                         onToggle = { toggle() },
                         onCollapse = { collapse() },
+                        onClose = { service.requestStop() },
                         onDrag = { dx, dy -> drag(dx, dy) },
                         onIme = { enabled -> setImeEnabled(enabled) },
                     )
@@ -87,8 +88,10 @@ class OverlayController(
 
     private fun drag(dx: Float, dy: Float) {
         val screen = screenSize()
+        // Allow dragging into the lower dismiss zone (half height past bottom).
+        val maxY = (screen.second - params.height / 2).coerceAtLeast(0)
         params.x = (params.x + dx.toInt()).coerceIn(0, (screen.first - params.width).coerceAtLeast(0))
-        params.y = (params.y + dy.toInt()).coerceIn(0, (screen.second - params.height).coerceAtLeast(0))
+        params.y = (params.y + dy.toInt()).coerceIn(0, maxY)
         view?.let { windowManager.updateViewLayout(it, params) }
     }
 

@@ -254,11 +254,11 @@ fun HomeScreen(
         Spacer(Modifier.height(24.dp))
         Text("WHILE YOU ARE IN ANOTHER APP", style = MaterialTheme.typography.labelSmall, color = Cyan)
         Spacer(Modifier.height(8.dp))
-        HowTo("1", "Grant overlay, then Launch bubble. A cyan mic appears over everything.")
-        HowTo("2", "Tap the bubble to open the messenger. Drag it out of the way.")
-        HowTo("3", "Paste the PC BRIDGE TOKEN in Settings, then hold HOLD TO TALK. saltvoice-local returns text.")
-        HowTo("4", "Grok Bot gets the line on the clipboard, then ACTION_SEND into ai.x.grok.bot (fallback ai.x.grok). If share does not land, the bot opens and you paste. No inject API.")
-        HowTo("5", "Brand Studio opens Capture with ?text= prefilled. Optional Agent key (ak_…) also POSTs /api/ideas. No extra share sheet.")
+        HowTo("1", "Grant overlay, then Launch bubble. Salt stays on standby over your other apps.")
+        HowTo("2", "Say Salt wake up. Then give instructions like you do with Salt Local.")
+        HowTo("3", "Say Salt send to Grok or Salt send to Brand Studio to pick the app. Tasks auto-send while listening.")
+        HowTo("4", "Say Salt go on standby (or bye) when you are done. Hold-to-talk still works as a manual override.")
+        HowTo("5", "Paste PC BRIDGE TOKEN in Settings; Whisper bridge on Tailscale :8791. Grok paste/share; Brand Studio Capture.")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(
                 androidx.compose.ui.platform.LocalContext.current,

@@ -3,6 +3,7 @@ package com.easton.saltbubble
 import android.app.Application
 import com.easton.saltbubble.data.SettingsStore
 import com.easton.saltbubble.net.BrandStudioClient
+import com.easton.saltbubble.net.BridgeClient
 import com.easton.saltbubble.net.TranscriptionClient
 import com.easton.saltbubble.send.SendHelper
 
@@ -16,6 +17,9 @@ class SaltBubbleApp : Application() {
     lateinit var brandStudioClient: BrandStudioClient
         private set
 
+    lateinit var bridgeClient: BridgeClient
+        private set
+
     lateinit var sendHelper: SendHelper
         private set
 
@@ -25,6 +29,7 @@ class SaltBubbleApp : Application() {
         val http = TranscriptionClient.defaultClient()
         transcriptionClient = TranscriptionClient(http)
         brandStudioClient = BrandStudioClient(http)
+        bridgeClient = BridgeClient(http)
         sendHelper = SendHelper(this)
     }
 }

@@ -34,7 +34,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Send
@@ -62,6 +64,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -71,6 +74,7 @@ import com.easton.saltbubble.data.ChatMessage
 import com.easton.saltbubble.data.Destination
 import com.easton.saltbubble.data.MessageRole
 import com.easton.saltbubble.data.MessageStatus
+import com.easton.saltbubble.data.SessionPhase
 import com.easton.saltbubble.overlay.ChatController
 import com.easton.saltbubble.ui.theme.Cyan
 import com.easton.saltbubble.ui.theme.CyanDim
@@ -90,6 +94,7 @@ fun OverlayRoot(
     expanded: StateFlow<Boolean>,
     onToggle: () -> Unit,
     onCollapse: () -> Unit,
+    onClose: () -> Unit,
     onDrag: (Float, Float) -> Unit,
     onIme: (Boolean) -> Unit,
 ) {
@@ -98,6 +103,8 @@ fun OverlayRoot(
     val busy by chat.busy.collectAsState()
     val messages by chat.messages.collectAsState()
     val destination by chat.destination.collectAsState()
+    val phase by chat.phase.collectAsState()
+    val sessionStatus by chat.sessionStatus.collectAsState()
 
     if (isExpanded) {
         MessengerPanel(
@@ -105,8 +112,12 @@ fun OverlayRoot(
             recording = recording,
             busy = busy,
             destination = destination,
+            phase = phase,
+            sessionStatus = sessionStatus,
             onDestination = chat::setDestination,
             onCollapse = onCollapse,
+            onClose = onClose,
+            onClip = { chat.saveClipMark("bubble") },
             onDrag = onDrag,
             onIme = onIme,
             onHoldStart = chat::startTalk,
@@ -120,8 +131,10 @@ fun OverlayRoot(
         FloatingBubble(
             recording = recording,
             busy = busy,
+            listening = phase == SessionPhase.Listening,
             onDrag = onDrag,
             onTap = onToggle,
+            onClose = onClose,
         )
     }
 }
@@ -130,9 +143,13 @@ fun OverlayRoot(
 private fun FloatingBubble(
     recording: Boolean,
     busy: Boolean,
+    listening: Boolean,
     onDrag: (Float, Float) -> Unit,
     onTap: () -> Unit,
+    onClose: () -> Unit,
 ) {
+    val density = LocalDensity.current
+    val dismissThresholdPx = with(density) { 140.dp.toPx() }
     val pulse = rememberInfiniteTransition(label = "bubble-pulse")
     val glow by pulse.animateFloat(
         initialValue = 0.35f,
@@ -143,11 +160,14 @@ private fun FloatingBubble(
         ),
         label = "glow",
     )
-    val ring = if (recording) Cyan.copy(alpha = glow) else Cyan.copy(alpha = 0.7f)
+    val ring = when {
+        recording || listening -> Cyan.copy(alpha = glow)
+        else -> Cyan.copy(alpha = 0.55f)
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .bubbleGestures(onDrag = onDrag, onTap = onTap),
+            .bubbleGestures(onDrag = onDrag, onTap = onTap, onDismiss = onClose, dismissThresholdPx = dismissThresholdPx),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -185,8 +205,12 @@ private fun MessengerPanel(
     recording: Boolean,
     busy: Boolean,
     destination: Destination,
+    phase: SessionPhase,
+    sessionStatus: String,
     onDestination: (Destination) -> Unit,
     onCollapse: () -> Unit,
+    onClose: () -> Unit,
+    onClip: () -> Unit,
     onDrag: (Float, Float) -> Unit,
     onIme: (Boolean) -> Unit,
     onHoldStart: () -> Unit,
@@ -197,6 +221,8 @@ private fun MessengerPanel(
     onGrok: (String) -> Unit,
 ) {
     var draft by remember { mutableStateOf("") }
+    val density = LocalDensity.current
+    val dismissThresholdPx = with(density) { 140.dp.toPx() }
     val listState = rememberLazyListState()
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -221,7 +247,7 @@ private fun MessengerPanel(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .bubbleGestures(onDrag = onDrag, onTap = {})
+                    .bubbleGestures(onDrag = onDrag, onTap = {}, onDismiss = onClose, dismissThresholdPx = dismissThresholdPx)
                     .padding(bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -232,20 +258,48 @@ private fun MessengerPanel(
                         color = Cyan,
                     )
                     Text(
-                        text = if (recording) "Listening" else if (busy) "Transcribing" else "Over your apps",
+                        text = when {
+                            recording -> "Hold-to-talk"
+                            busy -> "Transcribing"
+                            else -> "${phase.label} — $sessionStatus"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = InkMuted,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Panel)
-                        .clickable(onClick = onCollapse),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.Remove, contentDescription = "Collapse", tint = Ink, modifier = Modifier.size(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Panel)
+                            .clickable(onClick = onClip),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.ContentCut, contentDescription = "Clip", tint = Cyan, modifier = Modifier.size(18.dp))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Panel)
+                            .clickable(onClick = onCollapse),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Remove, contentDescription = "Collapse", tint = Ink, modifier = Modifier.size(18.dp))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Panel)
+                            .clickable(onClick = onClose),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Close", tint = Ink, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
 
@@ -312,6 +366,7 @@ private fun MessengerPanel(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
                     onSend = {
+                        if (draft.trim().isEmpty()) return@KeyboardActions
                         onSendTyped(draft)
                         draft = ""
                     },
@@ -323,6 +378,7 @@ private fun MessengerPanel(
                         tint = Cyan,
                         modifier = Modifier
                             .clickable {
+                                if (draft.trim().isEmpty()) return@clickable
                                 onSendTyped(draft)
                                 draft = ""
                             }
@@ -506,20 +562,27 @@ private fun HoldToTalkButton(
 private fun Modifier.bubbleGestures(
     onDrag: (Float, Float) -> Unit,
     onTap: () -> Unit,
-): Modifier = pointerInput(Unit) {
+    onDismiss: (() -> Unit)? = null,
+    dismissThresholdPx: Float = 0f,
+): Modifier = pointerInput(dismissThresholdPx) {
     awaitEachGesture {
         val down = awaitFirstDown()
         var dragged = false
-        drag(down.id) { change ->
+        var totalDy = 0f
+        val completed = drag(down.id) { change ->
             val dx = change.position.x - change.previousPosition.x
             val dy = change.position.y - change.previousPosition.y
             val fromStart = change.position - down.position
             if (fromStart.getDistance() > viewConfiguration.touchSlop) {
                 dragged = true
+                totalDy += dy
                 change.consume()
                 onDrag(dx, dy)
             }
         }
-        if (!dragged) onTap()
+        when {
+            completed && dragged && onDismiss != null && totalDy >= dismissThresholdPx -> onDismiss()
+            !dragged -> onTap()
+        }
     }
 }

@@ -13,6 +13,11 @@ enum class Destination(val label: String) {
     fun includesBrandStudio(): Boolean = this == BrandStudio || this == Both
 }
 
+enum class SessionPhase(val label: String) {
+    Standby("Standby"),
+    Listening("Listening"),
+}
+
 enum class MessageRole {
     User,
     Status,

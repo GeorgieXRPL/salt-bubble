@@ -48,12 +48,14 @@ class SendHelper(private val context: Context) {
     }
 
     private fun sendToGrok(text: String, preferred: String) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
         toast(context.getString(R.string.paste_in_grok))
         for (pkg in GrokTargets.packages(preferred.ifBlank { GrokTargets.BOT })) {
-            if (tryActionSend(text, pkg)) return
+            if (tryActionSend(trimmed, pkg)) return
             if (tryLaunch(pkg)) return
         }
-        share(text, "Send to Grok Bot")
+        share(trimmed, "Send to Grok Bot")
     }
 
     private fun tryActionSend(text: String, pkg: String): Boolean {
