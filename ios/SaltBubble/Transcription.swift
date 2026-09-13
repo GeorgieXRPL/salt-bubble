@@ -26,6 +26,44 @@ enum BridgeClient {
         return try await post(url: URL(string: root + "/transcribe.txt")!, token: token, file: file, acceptJSON: false)
     }
 
+    static func pair(baseUrl: String, token: String) async throws {
+        let root = baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let url = URL(string: root + "/pair") else { throw URLError(.badURL) }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !token.isEmpty {
+            request.setValue(token, forHTTPHeaderField: "X-Salt-Token")
+        }
+        request.httpBody = Data("{}".utf8)
+        let (_, response) = try await URLSession.shared.data(for: request)
+        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200...299).contains(code) else { throw URLError(.badServerResponse) }
+    }
+
+    static func sendToGrok(baseUrl: String, token: String, text: String) async throws {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw URLError(.zeroByteResource) }
+        let root = baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let url = URL(string: root + "/send-to-grok") else { throw URLError(.badURL) }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !token.isEmpty {
+            request.setValue(token, forHTTPHeaderField: "X-Salt-Token")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["text": trimmed])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let raw = String(data: data, encoding: .utf8) ?? ""
+        if raw.contains("skipped") { return }
+        guard (200...299).contains(code) else {
+            throw NSError(domain: "SaltBubble", code: code, userInfo: [NSLocalizedDescriptionKey: raw])
+        }
+    }
+
     static func addIdea(hubUrl: String, token: String, text: String) async throws {
         let key = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }

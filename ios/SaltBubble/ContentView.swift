@@ -17,22 +17,30 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("EASTON · HUD")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.cyan)
+                        .foregroundStyle(Color(red: 0.18, green: 0.90, blue: 0.84))
                     Text("Salt Bubble")
                         .font(.largeTitle.bold())
-                    Text("iOS cannot float over Camera. Hold to talk here, then send to Grok or Brand Studio.")
+                    Text("iOS cannot float over Camera. Hold to talk here, then send to Grok or Brand Studio. Session wake lives on Android.")
                         .foregroundStyle(.secondary)
 
-                    GroupBox("BRIDGE") {
-                        Text(settings.bridgeBaseUrl)
-                        Text(settings.bridgeToken.isEmpty ? "Bridge token missing" : "Bridge token set")
+                    GroupBox("READY") {
+                        Text(settings.bridgeToken.isEmpty ? "Bridge not paired" : "Bridge paired · private tailnet")
                             .foregroundStyle(settings.bridgeToken.isEmpty ? .red : .secondary)
-                        Text(settings.isPaired ? "Brand Studio paired" : "Brand Studio not paired")
-                            .foregroundStyle(settings.isPaired ? .cyan : .secondary)
-                        if !pairNote.isEmpty { Text(pairNote).foregroundStyle(.cyan) }
+                        Text(settings.isPaired ? "Studio paired" : "Studio not paired")
+                            .foregroundStyle(settings.isPaired ? Color(red: 0.18, green: 0.90, blue: 0.84) : .secondary)
+                        Text("Grok on \(settings.grokLand.lowercased())")
+                            .foregroundStyle(.secondary)
+                        if !pairNote.isEmpty { Text(pairNote).foregroundStyle(Color(red: 0.18, green: 0.90, blue: 0.84)) }
                         if !ping.isEmpty { Text(ping).foregroundStyle(.secondary) }
                         Button("Ping bridge") { Task { await pingBridge() } }
                     }
+
+                    Picker("Grok lands", selection: $settings.grokLand) {
+                        Text("Phone").tag("Phone")
+                        Text("PC").tag("PC")
+                        Text("Both").tag("Both")
+                    }
+                    .pickerStyle(.segmented)
 
                     Picker("Send", selection: $destination) {
                         ForEach(Destination.allCases) { Text($0.rawValue).tag($0) }
@@ -67,16 +75,30 @@ struct ContentView: View {
                     settings.apply(pair)
                     pairNote = "Paired with Brand Studio"
                 }
+                if let bridge = BridgePairUrls.parse(url) {
+                    settings.apply(bridge)
+                    pairNote = "Paired with this PC over Tailscale"
+                    Task {
+                        do {
+                            try await BridgeClient.pair(baseUrl: settings.bridgeBaseUrl, token: settings.bridgeToken)
+                        } catch {
+                            pairNote = "Bridge saved — pin failed"
+                        }
+                    }
+                }
             }
         }
     }
 
     private var holdButton: some View {
-        Text(recording ? "Listening… release" : "Hold to talk")
+        Text(busy ? "Transcribing" : recording ? "Release" : "Hold to talk")
             .font(.headline)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(recording ? Color.red.opacity(0.85) : Color.cyan, in: RoundedRectangle(cornerRadius: 14))
-            .foregroundStyle(.black)
+            .background(
+                busy ? Color.gray.opacity(0.35) : recording ? Color(red: 0.18, green: 0.90, blue: 0.84) : Color(red: 0.05, green: 0.43, blue: 0.41),
+                in: RoundedRectangle(cornerRadius: 14)
+            )
+            .foregroundStyle(recording ? .black : Color(red: 0.49, green: 0.96, blue: 0.93))
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
@@ -135,7 +157,34 @@ struct ContentView: View {
     }
 
     private func send(_ dest: Destination) {
-        SendHelper.send(transcript, to: dest, captureUrl: settings.captureUrl)
+        let land = settings.grokLand
+        let wantsGrok = dest == .grok || dest == .both
+        if dest == .studio || dest == .both {
+            SendHelper.send(transcript, to: .studio, captureUrl: settings.captureUrl)
+        }
+        if wantsGrok {
+            if land == "PC" || land == "Both" {
+                Task {
+                    do {
+                        try await BridgeClient.sendToGrok(
+                            baseUrl: settings.bridgeBaseUrl,
+                            token: settings.bridgeToken,
+                            text: transcript
+                        )
+                        status = "Pasted into Grok Bot on MyPC"
+                    } catch {
+                        if land != "PC" {
+                            SendHelper.send(transcript, to: .grok, captureUrl: settings.captureUrl)
+                            status = "Bridge paste failed. Shared on this phone."
+                        } else {
+                            status = "Could not paste into Grok on MyPC"
+                        }
+                    }
+                }
+            } else {
+                SendHelper.send(transcript, to: .grok, captureUrl: settings.captureUrl)
+            }
+        }
         if dest.includesStudio, settings.postIdeaOnSend, settings.isPaired {
             Task {
                 do {
@@ -154,7 +203,7 @@ struct ContentView: View {
             let health = try await BridgeClient.health(baseUrl: settings.bridgeBaseUrl)
             if health.ok {
                 ping = health.authRequired && settings.bridgeToken.isEmpty
-                    ? "Bridge is up — paste the BRIDGE TOKEN in Settings"
+                    ? "Bridge is up — open PAIR PHONE from the PC"
                     : "Bridge is up"
             } else {
                 ping = "Bridge answered but is not healthy"

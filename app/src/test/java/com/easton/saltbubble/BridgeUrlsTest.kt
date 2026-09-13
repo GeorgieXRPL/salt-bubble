@@ -5,6 +5,8 @@ import com.easton.saltbubble.data.BridgeUrls
 import com.easton.saltbubble.data.CaptureUrls
 import com.easton.saltbubble.data.Destination
 import com.easton.saltbubble.data.GrokTargets
+import com.easton.saltbubble.data.BridgePairUrls
+import com.easton.saltbubble.data.GrokLand
 import com.easton.saltbubble.data.PairUrls
 import com.easton.saltbubble.net.HubUrls
 import com.easton.saltbubble.net.TranscriptParser
@@ -244,6 +246,37 @@ class PairUrlsTest {
         assertNull(
             PairUrls.parse("saltbubble://pair?hub=http://evil.example&key=ak_one"),
         )
+    }
+}
+
+class BridgePairUrlsTest {
+    @Test
+    fun buildsAndParses() {
+        val raw = BridgePairUrls.build("mypc.tailc2bc11.ts.net", "tok", 8791, false, 9_999_999_999L)
+        val pair = BridgePairUrls.parse(raw)
+        assertEquals("mypc.tailc2bc11.ts.net", pair?.host)
+        assertEquals(8791, pair?.port)
+        assertEquals("tok", pair?.token)
+        assertFalse(pair?.https ?: true)
+        assertTrue(raw.startsWith("saltbubble://bridge?"))
+    }
+
+    @Test
+    fun expiredLinkIsIgnored() {
+        val raw = BridgePairUrls.build("mypc.tailc2bc11.ts.net", "tok", 8791, false, 1L)
+        assertNull(BridgePairUrls.parse(raw))
+    }
+}
+
+class GrokLandTest {
+    @Test
+    fun phoneDoesNotUsePc() {
+        assertTrue(GrokLand.Phone.usesPhone())
+        assertFalse(GrokLand.Phone.usesPc())
+        assertTrue(GrokLand.Pc.usesPc())
+        assertFalse(GrokLand.Pc.usesPhone())
+        assertTrue(GrokLand.Both.usesPhone())
+        assertTrue(GrokLand.Both.usesPc())
     }
 }
 

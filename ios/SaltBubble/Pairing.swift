@@ -52,3 +52,38 @@ enum PairUrls {
         )
     }
 }
+
+struct BridgePair: Equatable {
+    var host: String
+    var port: Int
+    var https: Bool
+    var token: String
+}
+
+enum BridgePairUrls {
+    static func parse(_ url: URL) -> BridgePair? {
+        guard url.scheme?.lowercased() == PairUrls.scheme,
+              url.host?.lowercased() == "bridge",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems else {
+            return nil
+        }
+        if let expRaw = items.first(where: { $0.name == "exp" })?.value,
+           let exp = Int(expRaw),
+           exp > 0,
+           exp < Int(Date().timeIntervalSince1970) {
+            return nil
+        }
+        let host = items.first(where: { $0.name == "host" })?.value ?? ""
+        let token = items.first(where: { $0.name == "token" })?.value ?? ""
+        let port = Int(items.first(where: { $0.name == "port" })?.value ?? "") ?? 8791
+        let https = ["1", "true", "yes"].contains((items.first(where: { $0.name == "https" })?.value ?? "").lowercased())
+        var cleaned = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        cleaned = cleaned.replacingOccurrences(of: "https://", with: "")
+        cleaned = cleaned.replacingOccurrences(of: "http://", with: "")
+        cleaned = cleaned.split(separator: "/").first.map(String.init) ?? cleaned
+        cleaned = cleaned.split(separator: ":").first.map(String.init) ?? cleaned
+        let key = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty, !key.isEmpty else { return nil }
+        return BridgePair(host: cleaned, port: min(max(port, 1), 65_535), https: https, token: key)
+    }
+}

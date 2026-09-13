@@ -17,7 +17,24 @@ class BridgeClient(
      * Ask Salt Remote Bridge on MyPC to paste into the desktop Grok Bot window
      * (same handoff Salt Local uses).
      */
-    suspend fun sendToGrok(baseUrl: String, text: String): String = withContext(Dispatchers.IO) {
+    suspend fun pair(baseUrl: String, token: String): String = withContext(Dispatchers.IO) {
+        val root = baseUrl.trimEnd('/')
+        val request = Request.Builder()
+            .url("$root/pair")
+            .header("Accept", "application/json")
+            .apply { if (token.isNotBlank()) header("X-Salt-Token", token.trim()) }
+            .post("{}".toRequestBody(JSON))
+            .build()
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException(TranscriptionClient.httpErrorMessage(response.code, raw))
+            }
+            raw.ifBlank { """{"ok":true}""" }
+        }
+    }
+
+    suspend fun sendToGrok(baseUrl: String, text: String, token: String = ""): String = withContext(Dispatchers.IO) {
         val trimmed = text.trim()
         // Never POST blank/whitespace-only payloads to the bridge.
         if (trimmed.isEmpty()) throw IOException("empty text")
@@ -27,6 +44,7 @@ class BridgeClient(
         val request = Request.Builder()
             .url("$root/send-to-grok")
             .header("Accept", "application/json")
+            .apply { if (token.isNotBlank()) header("X-Salt-Token", token.trim()) }
             .post(body)
             .build()
         http.newCall(request).execute().use { response ->
@@ -51,7 +69,12 @@ class BridgeClient(
      * Ask Salt Remote Bridge on MyPC to write a transcript clip mark
      * (last ~30s buffer on PC if text is blank).
      */
-    suspend fun postClip(baseUrl: String, text: String = "", source: String = "bubble"): String = withContext(Dispatchers.IO) {
+    suspend fun postClip(
+        baseUrl: String,
+        text: String = "",
+        source: String = "bubble",
+        token: String = "",
+    ): String = withContext(Dispatchers.IO) {
         val root = baseUrl.trimEnd('/')
         val payload = JSONObject()
             .put("text", text)
@@ -61,6 +84,7 @@ class BridgeClient(
         val request = Request.Builder()
             .url("$root/clip")
             .header("Accept", "application/json")
+            .apply { if (token.isNotBlank()) header("X-Salt-Token", token.trim()) }
             .post(body)
             .build()
         http.newCall(request).execute().use { response ->

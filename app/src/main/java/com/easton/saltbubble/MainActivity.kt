@@ -82,6 +82,11 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onRequestOverlay = ::openOverlaySettings,
+                        onGrokLand = { land ->
+                            lifecycleScope.launch {
+                                application.saltBubble.settingsStore.update { it.copy(grokLand = land) }
+                            }
+                        },
                     )
                 }
             }
@@ -100,17 +105,45 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyPairIntent(intent: Intent?) {
-        val pair = com.easton.saltbubble.data.PairUrls.parse(intent?.data) ?: return
+        val data = intent?.data
+        val studio = com.easton.saltbubble.data.PairUrls.parse(data)
+        val bridge = com.easton.saltbubble.data.BridgePairUrls.parse(data)
+        if (studio == null && bridge == null) return
         lifecycleScope.launch {
-            application.saltBubble.settingsStore.update { current ->
-                current.copy(
-                    hubUrl = pair.hubUrl,
-                    hubToken = pair.hubToken,
-                    captureUrl = pair.captureUrl.ifBlank { current.captureUrl },
-                    postIdeaOnSend = true,
-                )
+            if (studio != null) {
+                application.saltBubble.settingsStore.update { current ->
+                    current.copy(
+                        hubUrl = studio.hubUrl,
+                        hubToken = studio.hubToken,
+                        captureUrl = studio.captureUrl.ifBlank { current.captureUrl },
+                        postIdeaOnSend = true,
+                    )
+                }
+                pairStatus = "Paired with Brand Studio"
             }
-            pairStatus = "Paired with Brand Studio"
+            if (bridge != null) {
+                application.saltBubble.settingsStore.update { current ->
+                    current.copy(
+                        bridgeHost = bridge.host,
+                        bridgePort = bridge.port,
+                        bridgeUseHttps = bridge.https,
+                        bridgeToken = bridge.token,
+                    )
+                }
+                pairStatus = "Paired with this PC over Tailscale"
+                runCatching {
+                    application.saltBubble.bridgeClient.pair(
+                        com.easton.saltbubble.data.BridgeUrls.baseUrl(
+                            bridge.host,
+                            bridge.port,
+                            bridge.https,
+                        ),
+                        bridge.token,
+                    )
+                }.onFailure { error ->
+                    pairStatus = "Bridge saved — pin failed (${error.message ?: error.javaClass.simpleName})"
+                }
+            }
         }
     }
 

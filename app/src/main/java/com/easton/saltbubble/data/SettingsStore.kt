@@ -31,6 +31,7 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.HUB_URL] = next.hubUrl.trim().ifBlank { AppSettings.DEFAULT_HUB_URL }
             prefs[Keys.HUB_TOKEN] = next.hubToken.trim()
             prefs[Keys.POST_IDEA] = next.postIdeaOnSend
+            prefs[Keys.GROK_LAND] = next.grokLand.name
         }
     }
 
@@ -48,6 +49,9 @@ class SettingsStore(private val context: Context) {
         hubUrl = prefs[Keys.HUB_URL]?.ifBlank { null } ?: AppSettings.DEFAULT_HUB_URL,
         hubToken = prefs[Keys.HUB_TOKEN] ?: "",
         postIdeaOnSend = prefs[Keys.POST_IDEA] ?: true,
+        grokLand = runCatching {
+            GrokLand.valueOf(prefs[Keys.GROK_LAND] ?: GrokLand.Phone.name)
+        }.getOrDefault(GrokLand.Phone),
     )
 
     private object Keys {
@@ -62,5 +66,6 @@ class SettingsStore(private val context: Context) {
         val HUB_URL = stringPreferencesKey("hub_url")
         val HUB_TOKEN = stringPreferencesKey("hub_token")
         val POST_IDEA = booleanPreferencesKey("post_idea_on_send")
+        val GROK_LAND = stringPreferencesKey("grok_land")
     }
 }

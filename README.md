@@ -79,9 +79,9 @@ Salt Bubble does **not** run Whisper on the phone. It POSTs 16 kHz mono WAV to *
 | Base URL | `http://mypc.tailc2bc11.ts.net:8791` |
 | JSON | `POST /transcribe` — multipart `audio` or `file`, header `X-Salt-Token`, body `{ "text": "…" }` |
 | Plain text | `POST /transcribe.txt` (fallback) |
-| Token | Printed as `BRIDGE TOKEN:` on the PC console; also `%LOCALAPPDATA%\SaltvoiceLocal\bridge.token` |
+| Token | Not printed. Open the console `PAIR PHONE: saltbubble://bridge?…` link on the phone. |
 
-**In the app:** open Salt Bubble → **Bridge, Grok, Capture**. Change host/port if your MagicDNS name is different, then paste the bridge token. Phone and PC must be on the same tailnet, and saltvoice-local must be listening on that port. Use **Ping bridge** on the home screen to check reachability.
+**In the app:** grant overlay + mic, then open **PAIR PHONE** from the saltvoice-local console on this phone. Host and token fill in. Pick **Grok on Phone / PC / Both**. Use **Ping bridge** to confirm the private tailnet hop. Advanced host/port stays under Settings → Advanced.
 
 HTTP cleartext is allowed on purpose — the default Tailscale bridge is `http://`, not HTTPS.
 
@@ -89,14 +89,13 @@ Repo: [github.com/GeorgieXRPL/saltvoice-local](https://github.com/GeorgieXRPL/sa
 
 ## Grok Bot on Android
 
-There is **no Grok inject API**. Send always copies the transcript to the clipboard, then:
+There is **no Grok inject API**. Home has a **Grok lands** switch:
 
-1. `ACTION_SEND` `text/plain` targeted at `ai.x.grok.bot` (override the package in Settings if needed).
-2. If that fails, launch the package and toast **Paste in Grok Bot**.
-3. Same sequence for fallback package `ai.x.grok`.
-4. Last resort: a generic share chooser.
+- **Phone** (default) — clipboard + open Grok Bot. Safest. The PC `/send-to-grok` endpoint is not called.
+- **PC** — `POST /send-to-grok` pastes into desktop Grok. Phone share stays off.
+- **Both** — PC paste first, phone share if the bridge misses.
 
-The home screen shows **Grok Bot installed / not installed** via `PackageManager` (see `<queries>` in the manifest).
+Phone share still copies the line, then `ACTION_SEND` to `ai.x.grok.bot` (fallback `ai.x.grok`), then a chooser. Toast **Paste in Grok Bot**.
 
 ## Brand Studio Capture
 
@@ -148,10 +147,10 @@ Out of scope: on-device Whisper, a Windows overlay rewrite, a fake Grok Bot inje
 1. Install the debug APK (sideload). Android may warn that the app is from an unknown source — allow it.
 2. Open Salt Bubble. Grant **Draw over other apps**, **Microphone**, and (Android 13+) **Notifications**.
 3. Confirm the bridge URL matches your PC’s Tailscale MagicDNS name and that [saltvoice-local](https://github.com/GeorgieXRPL/saltvoice-local) is running with **remote_bridge** enabled (default port `8791`).
-4. Paste the `BRIDGE TOKEN` from the PC console into Salt Bubble Settings. Tap **Ping bridge**.
-5. Install **Grok Bot** (`ai.x.grok.bot`) if you want share-to-Grok. Capture works in the browser either way.
-6. Optional: paste a Brand Studio Agent key (`ak_…`) in Settings if you want send to also `POST /api/ideas`.
-7. Tap **Launch bubble**, then hold-to-talk from Camera or Chrome.
+4. On the PC console, open **PAIR PHONE** (`saltbubble://bridge?…`) on this phone. Do not stream that line. Tap **Ping bridge**.
+5. Choose **Grok on Phone / PC / Both**.
+6. Optional: Brand Studio → Agents → Open Salt Bubble for the `ak_…` idea key.
+7. Tap **Launch bubble**. Say **Salt wake up**, or hold-to-talk.
 
 ### Permissions
 

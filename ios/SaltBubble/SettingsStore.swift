@@ -10,6 +10,7 @@ final class SettingsStore: ObservableObject {
     @AppStorage("hubUrl") var hubUrl: String = PairUrls.defaultHub
     @AppStorage("hubToken") var hubToken: String = ""
     @AppStorage("postIdeaOnSend") var postIdeaOnSend: Bool = true
+    @AppStorage("grokLand") var grokLand: String = "Phone"
 
     var bridgeBaseUrl: String {
         let host = bridgeHost
@@ -28,5 +29,11 @@ final class SettingsStore: ObservableObject {
         hubToken = pair.hubToken
         if !pair.captureUrl.isEmpty { captureUrl = pair.captureUrl }
         postIdeaOnSend = true
+    }
+
+    func apply(_ pair: BridgePair) {
+        bridgeHost = pair.host
+        bridgePort = pair.port
+        bridgeToken = pair.token
     }
 }

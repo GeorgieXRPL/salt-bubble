@@ -13,6 +13,16 @@ enum class Destination(val label: String) {
     fun includesBrandStudio(): Boolean = this == BrandStudio || this == Both
 }
 
+enum class GrokLand(val label: String) {
+    Phone("Phone"),
+    Pc("PC"),
+    Both("Both"),
+    ;
+
+    fun usesPhone(): Boolean = this == Phone || this == Both
+    fun usesPc(): Boolean = this == Pc || this == Both
+}
+
 enum class SessionPhase(val label: String) {
     Standby("Standby"),
     Listening("Listening"),
@@ -52,6 +62,7 @@ data class AppSettings(
     val hubUrl: String = DEFAULT_HUB_URL,
     val hubToken: String = "",
     val postIdeaOnSend: Boolean = true,
+    val grokLand: GrokLand = GrokLand.Phone,
 ) {
     val bridgeBaseUrl: String = BridgeUrls.baseUrl(bridgeHost, bridgePort, bridgeUseHttps)
 

@@ -152,7 +152,6 @@ class ChatController(
             if (payload.isEmpty()) _sessionStatus.value = "Empty — ignored"
             return
         }
-        // Brand Studio / share sheet still via SendHelper; Grok auto-pastes through MyPC bridge.
         when (destination) {
             Destination.BrandStudio -> sendHelper.send(payload, destination, settings)
             Destination.GrokBot -> Unit
@@ -164,28 +163,35 @@ class ChatController(
             }
         }
         maybePostIdea(payload, destination)
-        if (destination == Destination.GrokBot || destination == Destination.Both) {
-            scope.launch {
-                val base = settings.bridgeBaseUrl
-                runCatching { bridgeClient.sendToGrok(base, payload) }
-                    .onSuccess { raw ->
-                        if (raw.contains("skipped")) {
-                            _sessionStatus.value = "Empty — ignored"
-                            return@onSuccess
-                        }
-                        push(
-                            ChatMessage(
-                                role = MessageRole.Status,
-                                text = "Pasted into Grok Bot on MyPC",
-                            ),
-                        )
+        val wantsGrok = destination == Destination.GrokBot || destination == Destination.Both
+        if (!wantsGrok) return
+        val land = settings.grokLand
+        if (!land.usesPc()) {
+            sendHelper.send(payload, Destination.GrokBot, settings)
+            return
+        }
+        scope.launch {
+            val base = settings.bridgeBaseUrl
+            runCatching { bridgeClient.sendToGrok(base, payload, settings.bridgeToken) }
+                .onSuccess { raw ->
+                    if (raw.contains("skipped")) {
+                        _sessionStatus.value = "Empty — ignored"
+                        return@onSuccess
                     }
-                    .onFailure { error ->
-                        val detail = error.message ?: error.javaClass.simpleName
-                        if (detail.contains("empty", ignoreCase = true) || detail.contains("skipped", ignoreCase = true)) {
-                            _sessionStatus.value = "Empty — ignored"
-                            return@onFailure
-                        }
+                    push(
+                        ChatMessage(
+                            role = MessageRole.Status,
+                            text = "Pasted into Grok Bot on MyPC",
+                        ),
+                    )
+                }
+                .onFailure { error ->
+                    val detail = error.message ?: error.javaClass.simpleName
+                    if (detail.contains("empty", ignoreCase = true) || detail.contains("skipped", ignoreCase = true)) {
+                        _sessionStatus.value = "Empty — ignored"
+                        return@onFailure
+                    }
+                    if (land.usesPhone()) {
                         push(
                             ChatMessage(
                                 role = MessageRole.Status,
@@ -193,8 +199,16 @@ class ChatController(
                             ),
                         )
                         sendHelper.send(payload, Destination.GrokBot, settings)
+                    } else {
+                        push(
+                            ChatMessage(
+                                role = MessageRole.Status,
+                                text = "Could not paste into Grok on MyPC ($detail).",
+                                status = MessageStatus.Failed,
+                            ),
+                        )
                     }
-            }
+                }
         }
     }
 
@@ -424,7 +438,7 @@ class ChatController(
         scope.launch {
             val recent = recentUserTranscript()
             val base = settings.bridgeBaseUrl
-            runCatching { bridgeClient.postClip(base, recent, source) }
+            runCatching { bridgeClient.postClip(base, recent, source, settings.bridgeToken) }
                 .onSuccess { raw ->
                     if (raw.contains("skipped")) {
                         _sessionStatus.value = "Clip skipped: no transcript"

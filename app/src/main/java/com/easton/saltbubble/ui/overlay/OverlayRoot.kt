@@ -15,8 +15,6 @@ import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,7 +47,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +59,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -76,6 +74,8 @@ import com.easton.saltbubble.data.MessageRole
 import com.easton.saltbubble.data.MessageStatus
 import com.easton.saltbubble.data.SessionPhase
 import com.easton.saltbubble.overlay.ChatController
+import com.easton.saltbubble.ui.theme.Amber
+import com.easton.saltbubble.ui.theme.AmberDim
 import com.easton.saltbubble.ui.theme.Cyan
 import com.easton.saltbubble.ui.theme.CyanDim
 import com.easton.saltbubble.ui.theme.CyanSoft
@@ -87,6 +87,20 @@ import com.easton.saltbubble.ui.theme.StatusBubble
 import com.easton.saltbubble.ui.theme.Stroke
 import com.easton.saltbubble.ui.theme.UserBubble
 import kotlinx.coroutines.flow.StateFlow
+
+private enum class HudMode {
+    Standby,
+    Listening,
+    Hold,
+    Transcribing,
+}
+
+private val Destination.chipLabel: String
+    get() = when (this) {
+        Destination.GrokBot -> "Grok"
+        Destination.BrandStudio -> "Studio"
+        Destination.Both -> "Both"
+    }
 
 @Composable
 fun OverlayRoot(
@@ -105,14 +119,18 @@ fun OverlayRoot(
     val destination by chat.destination.collectAsState()
     val phase by chat.phase.collectAsState()
     val sessionStatus by chat.sessionStatus.collectAsState()
+    val mode = when {
+        recording -> HudMode.Hold
+        busy -> HudMode.Transcribing
+        phase == SessionPhase.Listening -> HudMode.Listening
+        else -> HudMode.Standby
+    }
 
     if (isExpanded) {
         MessengerPanel(
             messages = messages,
-            recording = recording,
-            busy = busy,
+            mode = mode,
             destination = destination,
-            phase = phase,
             sessionStatus = sessionStatus,
             onDestination = chat::setDestination,
             onCollapse = onCollapse,
@@ -125,13 +143,10 @@ fun OverlayRoot(
             onSendTyped = chat::sendTyped,
             onSend = chat::send,
             onCopy = chat::copy,
-            onGrok = chat::grokHelper,
         )
     } else {
         FloatingBubble(
-            recording = recording,
-            busy = busy,
-            listening = phase == SessionPhase.Listening,
+            mode = mode,
             onDrag = onDrag,
             onTap = onToggle,
             onClose = onClose,
@@ -141,9 +156,7 @@ fun OverlayRoot(
 
 @Composable
 private fun FloatingBubble(
-    recording: Boolean,
-    busy: Boolean,
-    listening: Boolean,
+    mode: HudMode,
     onDrag: (Float, Float) -> Unit,
     onTap: () -> Unit,
     onClose: () -> Unit,
@@ -153,16 +166,22 @@ private fun FloatingBubble(
     val pulse = rememberInfiniteTransition(label = "bubble-pulse")
     val glow by pulse.animateFloat(
         initialValue = 0.35f,
-        targetValue = 0.9f,
+        targetValue = 0.95f,
         animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
+            animation = tween(if (mode == HudMode.Hold) 520 else 900, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "glow",
     )
-    val ring = when {
-        recording || listening -> Cyan.copy(alpha = glow)
-        else -> Cyan.copy(alpha = 0.55f)
+    val accent = when (mode) {
+        HudMode.Standby -> Amber
+        HudMode.Listening, HudMode.Hold -> Cyan
+        HudMode.Transcribing -> CyanSoft
+    }
+    val ring = when (mode) {
+        HudMode.Standby -> Amber.copy(alpha = 0.55f)
+        HudMode.Listening, HudMode.Hold -> accent.copy(alpha = glow)
+        HudMode.Transcribing -> Cyan.copy(alpha = 0.7f)
     }
     Box(
         modifier = Modifier
@@ -175,22 +194,29 @@ private fun FloatingBubble(
                 .size(56.dp)
                 .shadow(12.dp, CircleShape)
                 .background(
-                    brush = Brush.radialGradient(listOf(CyanDim, Night)),
+                    brush = Brush.radialGradient(
+                        listOf(if (mode == HudMode.Standby) AmberDim else CyanDim, Night),
+                    ),
                     shape = CircleShape,
                 )
                 .border(2.dp, ring, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            when {
-                busy -> CircularProgressIndicator(
+            when (mode) {
+                HudMode.Transcribing -> CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
                     strokeWidth = 2.dp,
                     color = CyanSoft,
                 )
                 else -> Icon(
                     imageVector = Icons.Outlined.Mic,
-                    contentDescription = "Salt Bubble",
-                    tint = if (recording) CyanSoft else Cyan,
+                    contentDescription = when (mode) {
+                        HudMode.Standby -> "Salt Bubble standby"
+                        HudMode.Listening -> "Salt Bubble listening"
+                        HudMode.Hold -> "Salt Bubble recording"
+                        HudMode.Transcribing -> "Salt Bubble transcribing"
+                    },
+                    tint = if (mode == HudMode.Hold) CyanSoft else accent,
                     modifier = Modifier.size(26.dp),
                 )
             }
@@ -198,14 +224,11 @@ private fun FloatingBubble(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MessengerPanel(
     messages: List<ChatMessage>,
-    recording: Boolean,
-    busy: Boolean,
+    mode: HudMode,
     destination: Destination,
-    phase: SessionPhase,
     sessionStatus: String,
     onDestination: (Destination) -> Unit,
     onCollapse: () -> Unit,
@@ -218,7 +241,6 @@ private fun MessengerPanel(
     onSendTyped: (String) -> Unit,
     onSend: (String, Destination) -> Unit,
     onCopy: (String) -> Unit,
-    onGrok: (String) -> Unit,
 ) {
     var draft by remember { mutableStateOf("") }
     val density = LocalDensity.current
@@ -228,6 +250,11 @@ private fun MessengerPanel(
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.lastIndex)
         }
+    }
+    val headline = when (mode) {
+        HudMode.Hold -> "Release to transcribe"
+        HudMode.Transcribing -> "Whisper on your PC…"
+        else -> sessionStatus
     }
 
     Surface(
@@ -248,7 +275,7 @@ private fun MessengerPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .bubbleGestures(onDrag = onDrag, onTap = {}, onDismiss = onClose, dismissThresholdPx = dismissThresholdPx)
-                    .padding(bottom = 8.dp),
+                    .padding(bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -257,64 +284,36 @@ private fun MessengerPanel(
                         style = MaterialTheme.typography.labelSmall,
                         color = Cyan,
                     )
-                    Text(
-                        text = when {
-                            recording -> "Hold-to-talk"
-                            busy -> "Transcribing"
-                            else -> "${phase.label} — $sessionStatus"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Spacer(Modifier.height(6.dp))
+                    PhaseChip(mode = mode)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Panel)
-                            .clickable(onClick = onClip),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.ContentCut, contentDescription = "Clip", tint = Cyan, modifier = Modifier.size(18.dp))
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Panel)
-                            .clickable(onClick = onCollapse),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.Remove, contentDescription = "Collapse", tint = Ink, modifier = Modifier.size(18.dp))
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Panel)
-                            .clickable(onClick = onClose),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.Close, contentDescription = "Close", tint = Ink, modifier = Modifier.size(18.dp))
-                    }
+                    CircleAction(Icons.Outlined.ContentCut, "Clip", onClip)
+                    CircleAction(Icons.Outlined.Remove, "Collapse", onCollapse)
+                    CircleAction(Icons.Outlined.Close, "Close", onClose)
                 }
             }
+            Text(
+                text = headline,
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Destination.entries.forEach { item ->
                     val selected = item == destination
                     Text(
-                        text = item.label.uppercase(),
+                        text = item.chipLabel.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (selected) Night else CyanSoft,
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (selected) Cyan else Panel)
                             .clickable { onDestination(item) }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
                     )
                 }
             }
@@ -335,7 +334,11 @@ private fun MessengerPanel(
                 if (messages.isEmpty()) {
                     item {
                         Text(
-                            text = "Hold the mic. Transcripts land here, then one tap toward Grok Bot or Brand Studio Capture.",
+                            text = if (mode == HudMode.Listening) {
+                                "Listening. Speak a task — it sends to ${destination.label}. Say Salt go on standby when done."
+                            } else {
+                                "Say Salt wake up. Ambient talk stays off the wire. Hold the mic for a take, or tap Send."
+                            },
                             color = InkMuted,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(8.dp),
@@ -348,7 +351,6 @@ private fun MessengerPanel(
                         defaultDestination = destination,
                         onSend = onSend,
                         onCopy = onCopy,
-                        onGrok = onGrok,
                     )
                 }
             }
@@ -361,7 +363,7 @@ private fun MessengerPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .onFocusChanged { onIme(it.isFocused) },
-                placeholder = { Text("Type if you cannot talk") },
+                placeholder = { Text("Type a task") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
@@ -399,8 +401,8 @@ private fun MessengerPanel(
 
             Spacer(Modifier.height(8.dp))
             HoldToTalkButton(
-                recording = recording,
-                enabled = !busy,
+                recording = mode == HudMode.Hold,
+                enabled = mode != HudMode.Transcribing,
                 onHoldStart = onHoldStart,
                 onHoldEnd = onHoldEnd,
             )
@@ -408,20 +410,51 @@ private fun MessengerPanel(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PhaseChip(mode: HudMode) {
+    val (label, fg, bg) = when (mode) {
+        HudMode.Standby -> Triple("STANDBY", Amber, AmberDim)
+        HudMode.Listening -> Triple("LISTENING", Night, Cyan)
+        HudMode.Hold -> Triple("HOLD", Night, CyanSoft)
+        HudMode.Transcribing -> Triple("WHISPER", CyanSoft, Panel)
+    }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = fg,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bg)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+@Composable
+private fun CircleAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(Panel)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = label, tint = if (label == "Clip") Cyan else Ink, modifier = Modifier.size(18.dp))
+    }
+}
+
 @Composable
 private fun MessageCard(
     message: ChatMessage,
     defaultDestination: Destination,
     onSend: (String, Destination) -> Unit,
     onCopy: (String) -> Unit,
-    onGrok: (String) -> Unit,
 ) {
     val alignEnd = message.role == MessageRole.User
     val bg = when (message.role) {
         MessageRole.User -> UserBubble
-        MessageRole.Status -> StatusBubble
-        MessageRole.System -> StatusBubble
+        MessageRole.Status, MessageRole.System -> StatusBubble
     }
     val color = if (message.status == MessageStatus.Failed) MaterialTheme.colorScheme.error else Ink
     Column(
@@ -452,11 +485,8 @@ private fun MessageCard(
             )
             if (message.role == MessageRole.User && message.status == MessageStatus.Ready) {
                 Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MiniAction("Send ${defaultDestination.label}") { onSend(message.id, defaultDestination) }
-                    MiniAction("Grok") { onGrok(message.id) }
-                    MiniAction("Studio") { onSend(message.id, Destination.BrandStudio) }
-                    MiniAction("Both") { onSend(message.id, Destination.Both) }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    MiniAction("Send ${defaultDestination.chipLabel}") { onSend(message.id, defaultDestination) }
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
@@ -469,7 +499,7 @@ private fun MessageCard(
                 }
                 if (message.sentTo.isNotEmpty()) {
                     Text(
-                        text = "Sent · ${message.sentTo.joinToString { it.label }}",
+                        text = "Sent · ${message.sentTo.joinToString { it.chipLabel }}",
                         color = CyanSoft,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 6.dp),
@@ -485,14 +515,14 @@ private fun MiniAction(label: String, onClick: () -> Unit) {
     Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
-        color = CyanSoft,
+        color = Night,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Night.copy(alpha = 0.45f))
+            .background(Cyan)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
     )
 }
 
@@ -520,7 +550,7 @@ private fun HoldToTalkButton(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(52.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(bg)
             .border(1.dp, if (recording) CyanSoft else Stroke, RoundedCornerShape(16.dp))
@@ -548,7 +578,7 @@ private fun HoldToTalkButton(
             Text(
                 text = when {
                     !enabled -> "TRANSCRIBING"
-                    recording -> "RELEASE TO SEND"
+                    recording -> "RELEASE"
                     else -> "HOLD TO TALK"
                 },
                 style = MaterialTheme.typography.labelSmall,
